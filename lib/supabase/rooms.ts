@@ -22,14 +22,22 @@ export async function getUserRooms(): Promise<Room[]> {
 }
 
 export async function getRoomByCode(code: string): Promise<Room | null> {
+  const normalized = code.trim().toUpperCase();
+  console.log('[getRoomByCode] raw:', JSON.stringify(code), '→ normalized:', normalized);
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from('rooms')
     .select('*')
-    .eq('join_code', code.toUpperCase())
-    .single();
+    .eq('join_code', normalized)
+    .maybeSingle();
 
-  if (error) return null;
+  if (error) {
+    console.error('[getRoomByCode] Supabase error:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
+    throw new Error(`DB error looking up room: ${error.message}`);
+  }
+
+  console.log('[getRoomByCode] result:', data ? `found id=${data.id}` : 'not found');
   return data;
 }
 
@@ -83,11 +91,19 @@ export async function createRoom(name: string): Promise<Room> {
 }
 
 export async function joinRoom(code: string): Promise<Room> {
+  const normalized = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(normalized)) throw new Error('Invalid code — must be exactly 6 alphanumeric characters.');
+
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const room = await getRoomByCode(code);
+  let room: Room | null;
+  try {
+    room = await getRoomByCode(normalized);
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to look up room. Try again.');
+  }
   if (!room) throw new Error('Room not found. Check the code and try again.');
 
   const { error } = await supabase
