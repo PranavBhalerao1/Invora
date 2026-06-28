@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DeleteDialogProps {
   itemName: string;
@@ -14,35 +15,36 @@ export default function DeleteDialog({ itemName, onConfirm, onCancel }: DeleteDi
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="absolute inset-0"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={onCancel}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.97, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="relative glass p-6 w-full max-w-sm"
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          className="relative bg-popover border border-border rounded-xl p-6 w-full max-w-sm shadow-xl shadow-black/40"
         >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(248,113,113,0.2)', border: '1px solid rgba(248,113,113,0.3)' }}>
-              <Trash2 className="w-5 h-5 text-red-400" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-destructive/10 border border-destructive/20">
+              <Trash2 className="size-4 text-destructive" />
             </div>
-            <h2 className="text-lg font-semibold" style={{ color: '#f0f4ff' }}>Delete Item</h2>
+            <h2 className="text-base font-semibold text-foreground">Delete Item</h2>
           </div>
-          <p className="text-sm mb-6" style={{ color: '#8b95aa' }}>
+          <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
             Are you sure you want to delete{' '}
-            <span className="font-medium" style={{ color: '#f0f4ff' }}>{itemName}</span>? This cannot be undone.
+            <span className="font-medium text-foreground">{itemName}</span>? This cannot be undone.
           </p>
-          <div className="flex gap-3">
-            <button onClick={onCancel} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors" style={{ color: '#8b95aa', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onCancel}>
               Cancel
-            </button>
-            <button onClick={onConfirm} className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity" style={{ background: '#ef4444', color: '#fff' }}>
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={onConfirm}>
               Delete
-            </button>
+            </Button>
           </div>
         </motion.div>
       </div>

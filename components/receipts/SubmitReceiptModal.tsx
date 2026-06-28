@@ -4,8 +4,12 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Camera, Plus, Trash2, Loader2 } from 'lucide-react';
 import { submitReceipt, uploadReceiptImage } from '@/lib/supabase/receipts';
+import { syncReceiptItemsToInventory } from '@/lib/supabase/receipt-inventory-sync';
 import { GeminiReceiptResult, Receipt } from '@/types';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface SubmitReceiptModalProps {
   roomId: string;
@@ -15,7 +19,11 @@ interface SubmitReceiptModalProps {
 
 type Step = 'upload' | 'review';
 
-export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: SubmitReceiptModalProps) {
+export default function SubmitReceiptModal({
+  roomId,
+  onClose,
+  onSubmitted,
+}: SubmitReceiptModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -34,22 +42,13 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
   function loadFile(f: File) {
     setFile(f);
     const reader = new FileReader();
-    reader.onload = ev => setPreview(ev.target?.result as string);
+    reader.onload = (ev) => setPreview(ev.target?.result as string);
     reader.readAsDataURL(f);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (f) loadFile(f);
-  }
-
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setDragging(true);
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -71,15 +70,9 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
         throw new Error(body.error ?? 'Failed to scan receipt');
       }
       const parsed: GeminiReceiptResult = await res.json();
-
       setVendor(parsed.vendor ?? '');
       setDate(parsed.date ?? '');
-      setLineItems(
-        (parsed.items ?? []).map(i => ({
-          name: i.name,
-          quantity: String(i.quantity ?? 1),
-        })),
-      );
+      setLineItems((parsed.items ?? []).map((i) => ({ name: i.name, quantity: String(i.quantity ?? 1) })));
       setTotal(String(parsed.total ?? ''));
       setStep('review');
     } catch (err: unknown) {
@@ -107,8 +100,8 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
       };
 
       const parsedItems = lineItems
-        .filter(i => i.name.trim())
-        .map(i => ({ name: i.name.trim(), quantity: i.quantity.trim() || '1' }));
+        .filter((i) => i.name.trim())
+        .map((i) => ({ name: i.name.trim(), quantity: i.quantity.trim() || '1' }));
 
       const receipt = await submitReceipt(roomId, receiptData, parsedItems);
 
@@ -124,8 +117,24 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
         }
       }
 
-      toast.success('Receipt submitted!');
-      onSubmitted({ ...receipt, items: parsedItems.map((i, idx) => ({ id: String(idx), receipt_id: receipt.id, name: i.name, quantity: i.quantity })) });
+      const syncResult = await syncReceiptItemsToInventory(roomId, parsedItems);
+      if (syncResult.failed === 0) {
+        toast.success('Receipt saved and inventory updated');
+      } else if (syncResult.succeeded > 0) {
+        toast.warning('Receipt saved, but some inventory items could not be synced');
+      } else {
+        toast.warning('Receipt saved, but inventory sync failed');
+      }
+
+      onSubmitted({
+        ...receipt,
+        items: parsedItems.map((i, idx) => ({
+          id: String(idx),
+          receipt_id: receipt.id,
+          name: i.name,
+          quantity: i.quantity,
+        })),
+      });
       onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Submit failed');
@@ -138,54 +147,80 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="absolute inset-0"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={onClose}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.97, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="relative glass w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          className="relative bg-popover border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl shadow-black/40"
         >
-          <div className="sticky top-0 flex items-center justify-between px-6 py-4 z-10" style={{ background: 'rgba(17,24,39,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.08)', borderRadius: '1rem 1rem 0 0' }}>
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-popover border-b border-border rounded-t-xl">
             <div>
-              <h2 className="text-lg font-semibold" style={{ color: '#f0f4ff' }}>Submit Receipt</h2>
-              <p className="text-xs mt-0.5" style={{ color: '#8b95aa' }}>{step === 'upload' ? 'Step 1 of 2 — Upload' : 'Step 2 of 2 — Review & Confirm'}</p>
+              <h2 className="text-base font-semibold text-foreground">Submit Receipt</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {step === 'upload' ? 'Step 1 of 2 — Upload image' : 'Step 2 of 2 — Review & confirm'}
+              </p>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
-              <X className="w-4 h-4" style={{ color: '#8b95aa' }} />
-            </button>
+            <Button variant="ghost" size="icon-sm" onClick={onClose}>
+              <X className="size-4" />
+            </Button>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex gap-1 px-6 pt-4">
+            {(['upload', 'review'] as Step[]).map((s, i) => (
+              <div
+                key={s}
+                className={cn(
+                  'h-0.5 flex-1 rounded-full transition-colors',
+                  step === s || (step === 'review' && i === 0) ? 'bg-primary' : 'bg-border'
+                )}
+              />
+            ))}
           </div>
 
           {step === 'upload' ? (
-            <div className="p-6 flex flex-col gap-5">
-              {/* Upload area */}
+            <div className="p-6 flex flex-col gap-4">
+              {/* Drop zone */}
               <div
-                className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 cursor-pointer transition-colors"
-                style={{
-                  borderColor: dragging ? '#FF7518' : 'rgba(255,117,24,0.3)',
-                  background: dragging ? 'rgba(255,117,24,0.06)' : undefined,
-                }}
+                className={cn(
+                  'relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 cursor-pointer transition-colors',
+                  dragging
+                    ? 'border-primary bg-accent'
+                    : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                )}
                 onClick={() => fileRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
                 onDrop={handleDrop}
               >
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
                 {preview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={preview} alt="Receipt preview" className="max-h-48 rounded-lg object-contain" />
                 ) : (
                   <>
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid rgba(255,117,24,0.2)' }}>
-                      <Camera className="w-7 h-7" style={{ color: '#FF7518' }} />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-accent">
+                      <Camera className="size-6 text-primary" />
                     </div>
-                    <p className="font-medium" style={{ color: '#f0f4ff' }}>
+                    <p className="text-sm font-medium text-foreground">
                       {dragging ? 'Drop to upload' : 'Take a photo or upload receipt'}
                     </p>
-                    <p className="text-sm mt-1" style={{ color: '#8b95aa' }}>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {dragging ? '' : 'Tap, drag & drop, or choose a file'}
                     </p>
                   </>
@@ -193,28 +228,33 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
               </div>
 
               {file && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#1a2235' }}>
-                  <Upload className="w-4 h-4" style={{ color: '#8b95aa' }} />
-                  <span className="text-sm truncate flex-1" style={{ color: '#f0f4ff' }}>{file.name}</span>
-                  <button onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }} className="p-1 rounded hover:bg-white/10">
-                    <X className="w-3.5 h-3.5" style={{ color: '#8b95aa' }} />
-                  </button>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted">
+                  <Upload className="size-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
                 </div>
               )}
 
-              <button
-                onClick={handleScan}
-                disabled={!file || scanning}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: '#FF7518', color: '#fff' }}
-              >
-                {scanning ? <><Loader2 className="w-4 h-4 animate-spin" /> Scanning...</> : 'Scan Receipt with AI'}
-              </button>
+              <Button onClick={handleScan} disabled={!file || scanning} className="w-full">
+                {scanning ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Scanning…
+                  </>
+                ) : (
+                  'Scan Receipt with AI'
+                )}
+              </Button>
 
               <button
-                onClick={() => { setStep('review'); }}
-                className="text-center text-sm hover:underline"
-                style={{ color: '#8b95aa' }}
+                onClick={() => setStep('review')}
+                className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Skip — enter details manually
               </button>
@@ -222,92 +262,153 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
           ) : (
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
               {preview && (
-                <img src={preview} alt="Receipt" className="w-full max-h-32 object-contain rounded-xl" style={{ background: '#1a2235' }} />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview}
+                  alt="Receipt"
+                  className="w-full max-h-32 object-contain rounded-xl bg-muted"
+                />
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Vendor</label>
-                  <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. Costco"
-                    className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                    style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Vendor
+                  </label>
+                  <Input
+                    type="text"
+                    value={vendor}
+                    onChange={(e) => setVendor(e.target.value)}
+                    placeholder="e.g. Costco"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Date</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                    style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff', colorScheme: 'dark' }} />
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="[color-scheme:dark]"
+                  />
                 </div>
               </div>
 
-              {/* Line items — name + quantity only, no prices */}
+              {/* Line items */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium" style={{ color: '#8b95aa' }}>Items</label>
-                  <button type="button" onClick={() => setLineItems(li => [...li, { name: '', quantity: '1' }])}
-                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
-                    style={{ color: '#FF7518', border: '1px solid rgba(255,117,24,0.3)' }}>
-                    <Plus className="w-3 h-3" /> Add item
-                  </button>
+                  <label className="text-xs font-medium text-muted-foreground">Items</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setLineItems((li) => [...li, { name: '', quantity: '1' }])}
+                    className="text-primary hover:text-primary"
+                  >
+                    <Plus className="size-3" />
+                    Add item
+                  </Button>
                 </div>
-                <div className="mb-1 grid gap-1" style={{ gridTemplateColumns: '1fr 80px 28px' }}>
-                  <span className="text-xs px-3" style={{ color: '#3d4a60' }}>Name</span>
-                  <span className="text-xs px-3" style={{ color: '#3d4a60' }}>Qty</span>
-                  <span />
-                </div>
-                <div className="flex flex-col gap-2">
-                  {lineItems.map((item, idx) => (
-                    <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 80px 28px' }}>
-                      <input type="text" value={item.name}
-                        onChange={e => { const li = [...lineItems]; li[idx].name = e.target.value; setLineItems(li); }}
-                        placeholder="Item name" className="px-3 py-2 rounded-lg text-sm outline-none"
-                        style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
-                      <input type="text" value={item.quantity}
-                        onChange={e => { const li = [...lineItems]; li[idx].quantity = e.target.value; setLineItems(li); }}
-                        placeholder="1" className="px-3 py-2 rounded-lg text-sm outline-none"
-                        style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
-                      <button type="button" onClick={() => setLineItems(li => li.filter((_, i) => i !== idx))}
-                        className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors self-center">
-                        <Trash2 className="w-4 h-4 text-red-400" />
-                      </button>
+                {lineItems.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="grid gap-2 px-1" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
+                      <span className="text-xs text-muted-foreground/60">Name</span>
+                      <span className="text-xs text-muted-foreground/60">Qty</span>
+                      <span />
                     </div>
-                  ))}
-                </div>
+                    {lineItems.map((item, idx) => (
+                      <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
+                        <Input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => {
+                            const li = [...lineItems];
+                            li[idx].name = e.target.value;
+                            setLineItems(li);
+                          }}
+                          placeholder="Item name"
+                        />
+                        <Input
+                          type="text"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const li = [...lineItems];
+                            li[idx].quantity = e.target.value;
+                            setLineItems(li);
+                          }}
+                          placeholder="1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setLineItems((li) => li.filter((_, i) => i !== idx))}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Single total field */}
               <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Total *</label>
-                <input type="number" step="0.01" min="0" value={total} onChange={e => setTotal(e.target.value)}
-                  placeholder="0.00" className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ background: '#1a2235', border: '1px solid rgba(255,117,24,0.3)', color: '#f0f4ff' }} />
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Total <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
+                  placeholder="0.00"
+                  className="border-primary/30 focus-visible:border-primary"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Your Name *</label>
-                <input type="text" value={yourName} onChange={e => setYourName(e.target.value)} required placeholder="e.g. Pranav B."
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Your Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  type="text"
+                  value={yourName}
+                  onChange={(e) => setYourName(e.target.value)}
+                  placeholder="e.g. Pranav B."
+                  required
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Notes</label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Optional notes..."
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
-                  style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Notes
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Optional notes…"
+                  className="textarea-field"
+                />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setStep('upload')}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors"
-                  style={{ color: '#8b95aa', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex gap-2 pt-1">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setStep('upload')}>
                   Back
-                </button>
-                <button type="submit" disabled={submitting}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-                  style={{ background: '#FF7518', color: '#fff' }}>
-                  {submitting ? 'Submitting...' : 'Submit Receipt'}
-                </button>
+                </Button>
+                <Button type="submit" disabled={submitting} className="flex-1">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    'Submit Receipt'
+                  )}
+                </Button>
               </div>
             </form>
           )}

@@ -22,13 +22,18 @@ export default function CopyCode({ code, label }: CopyCodeProps) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-colors hover:bg-white/10"
-      style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid rgba(255,117,24,0.3)', color: '#FF7518' }}
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono font-semibold transition-colors hover:bg-accent bg-accent/50 text-primary border border-primary/20"
       title="Copy join code"
     >
-      {label && <span className="font-sans font-normal mr-1" style={{ color: '#8b95aa' }}>{label}</span>}
+      {label && (
+        <span className="font-sans font-normal text-muted-foreground">{label}</span>
+      )}
       {code}
-      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? (
+        <Check className="size-3 shrink-0" />
+      ) : (
+        <Copy className="size-3 shrink-0" />
+      )}
     </button>
   );
 }

@@ -1,15 +1,27 @@
 import { Status } from '@/types/inventory';
 
 const config: Record<Status, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'bg-red-500/20 text-red-400 border border-red-500/30' },
-  partial: { label: 'Partial', className: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
-  arrived: { label: 'Arrived', className: 'bg-green-500/20 text-green-400 border border-green-500/30' },
+  pending: {
+    label: 'Pending',
+    className:
+      'bg-destructive/10 text-destructive border border-destructive/20',
+  },
+  partial: {
+    label: 'Partial',
+    className: 'bg-warning/10 text-warning border border-warning/20',
+  },
+  arrived: {
+    label: 'Arrived',
+    className: 'bg-success/10 text-success border border-success/20',
+  },
 };
 
 export default function StatusBadge({ status }: { status: Status }) {
   const { label, className } = config[status];
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors duration-300 ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${className}`}
+    >
       {label}
     </span>
   );

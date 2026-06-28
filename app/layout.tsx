@@ -1,13 +1,10 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Geist } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
+import { cn } from '@/lib/utils';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: 'SSV Camp App',
@@ -16,14 +13,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
+    <html lang="en" className={cn('h-full dark', geist.variable)}>
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster
           theme="dark"
           position="bottom-right"
           toastOptions={{
-            style: { background: '#111827', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' },
+            style: {
+              background: '#131c2e',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#f0f4ff',
+            },
           }}
         />
       </body>

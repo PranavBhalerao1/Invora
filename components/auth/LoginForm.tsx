@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -32,50 +34,43 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: '#f0f4ff' }}>Email</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#8b95aa' }} />
-          <input
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="you@example.com"
-            className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm outline-none"
-            style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }}
+            className="pl-9"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: '#f0f4ff' }}>Password</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#8b95aa' }} />
-          <input
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="••••••••"
-            className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm outline-none"
-            style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }}
+            className="pl-9"
           />
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: '#FF7518', color: '#fff' }}
-      >
-        <LogIn className="w-4 h-4" />
-        {loading ? 'Signing in...' : 'Sign In'}
-      </button>
+      <Button type="submit" disabled={loading} className="w-full mt-1">
+        <LogIn className="size-4" />
+        {loading ? 'Signing in…' : 'Sign In'}
+      </Button>
 
-      <p className="text-center text-sm" style={{ color: '#8b95aa' }}>
+      <p className="text-center text-sm text-muted-foreground">
         No account?{' '}
-        <Link href="/signup" className="font-medium hover:underline" style={{ color: '#FF7518' }}>
+        <Link href="/signup" className="font-medium text-primary hover:underline">
           Create one
         </Link>
       </p>

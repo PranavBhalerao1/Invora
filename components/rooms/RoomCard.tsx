@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Users, Package, ChevronRight } from 'lucide-react';
 import { Room } from '@/types';
 import CopyCode from '@/components/ui/CopyCode';
+import { Button } from '@/components/ui/button';
 
 interface RoomCardProps {
   room: Room;
@@ -14,37 +15,33 @@ interface RoomCardProps {
 
 export default function RoomCard({ room, isAdmin, memberCount, itemCount }: RoomCardProps) {
   return (
-    <div className="glass p-5 flex flex-col gap-4 hover:bg-white/[0.06] transition-colors">
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4 hover:bg-muted/20 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-base truncate" style={{ color: '#f0f4ff' }}>{room.name}</h3>
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            <h3 className="font-semibold text-sm text-foreground truncate">{room.name}</h3>
             {isAdmin && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(255,117,24,0.15)', color: '#FF7518' }}>
+              <span className="px-1.5 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground">
                 Admin
               </span>
             )}
           </div>
-          <div className="mt-2">
-            <CopyCode code={room.join_code} label="Code:" />
-          </div>
+          <CopyCode code={room.join_code} label="Code:" />
         </div>
-        <Link
-          href={`/room/${room.join_code}`}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:opacity-90 shrink-0"
-          style={{ background: '#FF7518', color: '#fff' }}
-        >
-          Open <ChevronRight className="w-4 h-4" />
-        </Link>
+        <Button asChild size="sm">
+          <Link href={`/room/${room.join_code}`}>
+            Open <ChevronRight className="size-3.5" />
+          </Link>
+        </Button>
       </div>
 
-      <div className="flex items-center gap-4 text-sm" style={{ color: '#8b95aa' }}>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5" />
+          <Users className="size-3.5" />
           {memberCount} member{memberCount !== 1 ? 's' : ''}
         </span>
         <span className="flex items-center gap-1.5">
-          <Package className="w-3.5 h-3.5" />
+          <Package className="size-3.5" />
           {itemCount} item{itemCount !== 1 ? 's' : ''}
         </span>
       </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { markReimbursed } from '@/lib/supabase/receipts';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 interface ReimburseButtonProps {
   receiptId: string;
@@ -27,14 +28,15 @@ export default function ReimburseButton({ receiptId, onReimbursed }: ReimburseBu
   }
 
   return (
-    <button
+    <Button
+      size="xs"
+      variant="ghost"
       onClick={handleClick}
       disabled={loading}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-      style={{ background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)', color: '#4ade80' }}
+      className="text-success border border-success/25 bg-success/8 hover:bg-success/15 hover:text-success"
     >
-      <CheckCircle className="w-3.5 h-3.5" />
-      {loading ? 'Updating...' : 'Reimburse'}
-    </button>
+      <CheckCircle className="size-3" />
+      {loading ? 'Updating…' : 'Reimburse'}
+    </Button>
   );
 }

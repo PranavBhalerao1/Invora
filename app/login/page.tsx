@@ -3,16 +3,16 @@ import LoginForm from '@/components/auth/LoginForm';
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0b0f1a' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(255,117,24,0.2)', border: '1px solid rgba(255,117,24,0.3)' }}>
-            <Package className="w-7 h-7" style={{ color: '#FF7518' }} />
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-accent border border-primary/20">
+            <Package className="size-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: '#f0f4ff' }}>SSV Camp App</h1>
-          <p className="text-sm mt-1" style={{ color: '#8b95aa' }}>Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-foreground">SSV Camp App</h1>
+          <p className="text-sm mt-1 text-muted-foreground">Sign in to your account</p>
         </div>
-        <div className="glass p-6">
+        <div className="bg-card border border-border rounded-xl p-6">
           <LoginForm />
         </div>
       </div>

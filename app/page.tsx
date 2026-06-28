@@ -10,6 +10,7 @@ import CreateRoomModal from '@/components/rooms/CreateRoomModal';
 import JoinRoomModal from '@/components/rooms/JoinRoomModal';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 export default function RoomHubPage() {
   const router = useRouter();
@@ -23,18 +24,28 @@ export default function RoomHubPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push('/login'); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
       setUserId(user.id);
       setDisplayName(user.user_metadata?.display_name ?? user.email ?? '');
 
       const userRooms = await getUserRooms();
-      // Fetch member and item counts
       const enriched = await Promise.all(
-        userRooms.map(async room => {
+        userRooms.map(async (room) => {
           const [{ count: memberCount }, { count: itemCount }] = await Promise.all([
-            supabase.from('room_members').select('*', { count: 'exact', head: true }).eq('room_id', room.id),
-            supabase.from('inventory_items').select('*', { count: 'exact', head: true }).eq('room_id', room.id),
+            supabase
+              .from('room_members')
+              .select('*', { count: 'exact', head: true })
+              .eq('room_id', room.id),
+            supabase
+              .from('inventory_items')
+              .select('*', { count: 'exact', head: true })
+              .eq('room_id', room.id),
           ]);
           return { ...room, member_count: memberCount ?? 0, item_count: itemCount ?? 0 };
         })
@@ -53,75 +64,70 @@ export default function RoomHubPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0b0f1a' }}>
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 glass" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,117,24,0.2)', border: '1px solid rgba(255,117,24,0.3)' }}>
-              <Package className="w-4 h-4" style={{ color: '#FF7518' }} />
+      <header className="sticky top-0 z-40 header-surface">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-accent border border-primary/20">
+              <Package className="size-3.5 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-base leading-tight" style={{ color: '#f0f4ff' }}>SSV Camp App</h1>
-              <p className="text-xs hidden sm:block" style={{ color: '#8b95aa' }}>{displayName}</p>
+              <h1 className="font-semibold text-sm text-foreground leading-tight">SSV Camp App</h1>
+              {displayName && (
+                <p className="text-xs text-muted-foreground hidden sm:block">{displayName}</p>
+              )}
             </div>
           </div>
-          <button onClick={handleSignOut} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm hover:bg-white/5 transition-colors" style={{ color: '#8b95aa', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <LogOut className="w-4 h-4" />
+          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <LogOut className="size-3.5" />
             <span className="hidden sm:inline">Sign out</span>
-          </button>
+          </Button>
         </div>
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold" style={{ color: '#f0f4ff' }}>Your Rooms</h2>
-            <p className="text-sm mt-0.5" style={{ color: '#8b95aa' }}>Camp workspaces you belong to</p>
+            <h2 className="text-lg font-semibold text-foreground">Your Rooms</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Camp workspaces you belong to</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowJoin(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors"
-              style={{ color: '#8b95aa', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <LogIn className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
+              <LogIn className="size-3.5" />
               <span className="hidden sm:inline">Join Room</span>
-            </button>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-              style={{ background: '#FF7518', color: '#fff' }}
-            >
-              <Plus className="w-4 h-4" />
+            </Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="size-3.5" />
               <span className="hidden sm:inline">Create Room</span>
-            </button>
+            </Button>
           </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#FF7518 transparent transparent transparent' }} />
+            <div className="w-7 h-7 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
           </div>
         ) : rooms.length === 0 ? (
-          <div className="glass flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid rgba(255,117,24,0.2)' }}>
-              <Package className="w-8 h-8" style={{ color: '#FF7518' }} />
-            </div>
-            <p className="font-semibold text-base" style={{ color: '#f0f4ff' }}>No rooms yet</p>
-            <p className="text-sm mt-1 max-w-xs" style={{ color: '#8b95aa' }}>Create a new camp workspace or join one with a 6-character code.</p>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowJoin(true)} className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors" style={{ color: '#8b95aa', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-20 text-center gap-2">
+            <Package className="size-8 text-muted-foreground/30 mb-2" />
+            <p className="font-semibold text-sm text-foreground">No rooms yet</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Create a new camp workspace or join one with a 6-character code.
+            </p>
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
                 Join Room
-              </button>
-              <button onClick={() => setShowCreate(true)} className="px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity" style={{ background: '#FF7518', color: '#fff' }}>
+              </Button>
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="size-3.5" />
                 Create Room
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rooms.map(room => (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rooms.map((room) => (
               <RoomCard
                 key={room.id}
                 room={room}
