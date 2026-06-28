@@ -55,26 +55,26 @@
 
 /* ─── Light theme palette ─── */
 :root {
-  --background: #f7f8fa;
-  --foreground: #111827;
+  --background: #f4f6fb;
+  --foreground: #0f1623;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #0f1623;
   --popover: #ffffff;
-  --popover-foreground: #111827;
+  --popover-foreground: #0f1623;
   --primary: #4f46e5;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #eef0f8;
   --secondary-foreground: #374151;
-  --muted: #f1f5f9;
-  --muted-foreground: #6b7280;
+  --muted: #eef0f8;
+  --muted-foreground: #5e6880;
   --accent: #eef2ff;
-  --accent-foreground: #4f46e5;
+  --accent-foreground: #4338ca;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
+  --border: #dde1ee;
+  --input: #dde1ee;
   --ring: #4f46e5;
-  --radius: 0.75rem;
+  --radius: 0.875rem;
   --chart-1: #4f46e5;
   --chart-2: #16a34a;
   --chart-3: #d97706;
@@ -93,16 +93,34 @@
 /* ─── Surface utilities ─── */
 .glass {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dde1ee;
   border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .header-surface {
-  background: rgba(247, 248, 250, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid #e5e7eb;
+  background: rgba(244, 246, 251, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(79, 70, 229, 0.08);
+}
+
+/* ─── Card elevation system ─── */
+.card-elevated {
+  background: #ffffff;
+  border: 1px solid rgba(79, 70, 229, 0.08);
+  border-radius: 1.25rem;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 4px 16px rgba(79, 70, 229, 0.06);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.card-elevated:hover {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 12px 40px rgba(79, 70, 229, 0.13);
+  transform: translateY(-2px);
 }
 
 /* ─── Base resets ─── */
@@ -134,7 +152,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f7f8fa;
+  background: #f4f6fb;
 }
 
 ::-webkit-scrollbar-thumb {

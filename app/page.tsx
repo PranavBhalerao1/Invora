@@ -67,93 +67,129 @@ export default function RoomHubPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="sticky top-0 z-40 header-surface">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-accent border border-primary/20">
-              <Package className="size-3.5 text-primary" />
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary shadow-sm shadow-primary/30 shrink-0">
+              <Package className="size-4 text-white" />
             </div>
             <div>
-              <h1 className="font-semibold text-sm text-foreground leading-tight">SSV Camp App</h1>
+              <p className="font-bold text-sm text-foreground leading-tight tracking-tight">SSV Camp App</p>
               {displayName && (
-                <p className="text-xs text-muted-foreground hidden sm:block">{displayName}</p>
+                <p className="text-xs text-muted-foreground hidden sm:block leading-none mt-0.5 truncate max-w-48">
+                  {displayName}
+                </p>
               )}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1.5">
             <LogOut className="size-3.5" />
             <span className="hidden sm:inline">Sign out</span>
           </Button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 sm:py-14">
-        {/* Hero */}
-        <div className="mb-10">
-          <h2 className="text-2xl font-bold text-foreground">
-            {firstName ? `Welcome back, ${firstName}` : 'Your Rooms'}
-          </h2>
-          <p className="text-base text-muted-foreground mt-1.5">
-            {rooms.length > 0
-              ? `${rooms.length} camp workspace${rooms.length !== 1 ? 's' : ''}`
-              : 'Manage your camp workspaces below.'}
-          </p>
-        </div>
+      <main className="flex-1 max-w-6xl mx-auto w-full px-5 sm:px-8 py-10 sm:py-16">
 
-        {/* Action row */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-            Workspaces
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowJoin(true)}>
-              <LogIn className="size-4" />
-              <span className="hidden sm:inline">Join Room</span>
-            </Button>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">Create Room</span>
-            </Button>
+        {/* ── Hero Panel ── */}
+        <section className="relative overflow-hidden rounded-3xl border border-indigo-100/90 mb-12 sm:mb-16"
+          style={{
+            background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 50%, #f5f3ff 100%)',
+          }}
+        >
+          {/* Decorative blur orbs */}
+          <div
+            className="absolute -top-16 -right-16 w-72 h-72 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)' }}
+            aria-hidden
+          />
+          <div
+            className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)' }}
+            aria-hidden
+          />
+
+          <div className="relative px-8 py-10 sm:px-12 sm:py-14">
+            <div className="flex items-start justify-between gap-8 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-primary/70 tracking-widest uppercase mb-4">
+                  Sangha Shiksha Varg
+                </p>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                  {firstName ? `Welcome back, ${firstName}` : 'Your Workspaces'}
+                </h2>
+                <p className="mt-3 text-base text-muted-foreground max-w-sm leading-relaxed">
+                  {loading
+                    ? 'Loading your workspaces…'
+                    : rooms.length > 0
+                    ? `${rooms.length} camp workspace${rooms.length !== 1 ? 's' : ''} — inventory and receipts, all in one place.`
+                    : 'Create or join a workspace to start managing camp inventory and receipts.'}
+                </p>
+
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Button size="lg" onClick={() => setShowCreate(true)}>
+                    <Plus className="size-4" />
+                    Create Room
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setShowJoin(true)}
+                    className="border-indigo-200 bg-white/60 hover:bg-white"
+                  >
+                    <LogIn className="size-4" />
+                    Join with Code
+                  </Button>
+                </div>
+              </div>
+
+              {/* Brand mark */}
+              <div className="hidden sm:flex items-center justify-center w-20 h-20 rounded-2xl bg-white/80 border border-indigo-100 shadow-[0_2px_16px_rgba(79,70,229,0.10)] shrink-0 mt-1">
+                <Package className="size-9 text-primary/50" />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
+        {/* ── Workspaces Grid ── */}
         {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <div className="flex items-center justify-center py-28">
+            <div className="relative w-9 h-9">
+              <div className="absolute inset-0 rounded-full border-2 border-primary/15" />
+              <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
           </div>
         ) : rooms.length === 0 ? (
-          <div className="border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center py-24 text-center gap-3">
-            <Package className="size-10 text-muted-foreground/30 mb-1" />
-            <div>
-              <p className="font-semibold text-base text-foreground">No rooms yet</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-                Create a new camp workspace or join one with a 6-character code.
-              </p>
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-4 rounded-3xl border-2 border-dashed border-border">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+              <Package className="size-6 text-muted-foreground/40" />
             </div>
-            <div className="flex gap-2 mt-2">
-              <Button variant="outline" onClick={() => setShowJoin(true)}>
-                <LogIn className="size-4" />
-                Join Room
-              </Button>
-              <Button onClick={() => setShowCreate(true)}>
-                <Plus className="size-4" />
-                Create Room
-              </Button>
+            <div>
+              <p className="font-semibold text-sm text-foreground">No workspaces yet</p>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
+                Use the buttons above to create a new camp workspace or join one with a 6-character code.
+              </p>
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                isAdmin={room.admin_id === userId}
-                memberCount={room.member_count ?? 0}
-                itemCount={room.item_count ?? 0}
-              />
-            ))}
-          </div>
+          <>
+            <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60 mb-5">
+              Workspaces
+            </p>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {rooms.map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  isAdmin={room.admin_id === userId}
+                  memberCount={room.member_count ?? 0}
+                  itemCount={room.item_count ?? 0}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 
