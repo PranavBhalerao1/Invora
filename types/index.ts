@@ -39,14 +39,12 @@ export interface ReceiptItem {
   id: string;
   receipt_id: string;
   name: string;
-  price: number;
+  price: number; // legacy DB column; always 0 for receipts submitted after quantity migration
 }
 
 export interface GeminiReceiptResult {
   vendor: string;
   date: string;
-  items: { name: string; price: number }[];
-  subtotal: number;
-  tax: number;
+  items: { name: string; quantity: string | number }[];
   total: number;
 }

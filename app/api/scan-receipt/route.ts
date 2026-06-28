@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGeminiClient } from '@/lib/gemini';
 import { getGroqClient } from '@/lib/groq';
+import { normalizeReceiptItems, runDevTest, NormalizedItem } from '@/lib/normalize-receipt-items';
 
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -17,9 +18,17 @@ interface Stage1Result {
   raw_lines: string[];
 }
 
-// Stage-2 output schema
-interface Stage2Result {
-  items: { name: string; quantity: number }[];
+// Stage-2 output schema (raw from Groq, before post-processing)
+interface Stage2Raw {
+  items: { name: string; quantity: string | number }[];
+  total: number;
+}
+
+// Final output schema
+interface ScanResult {
+  vendor: string;
+  date: string;
+  items: NormalizedItem[];
   total: number;
 }
 
@@ -100,8 +109,8 @@ Include every line of text from the receipt in raw_lines — product lines, pric
   return parsed;
 }
 
-/** Pass 2: Groq text normalization → items + total */
-async function runGroqPass(stage1: Stage1Result): Promise<Stage2Result> {
+/** Pass 2: Groq text normalization → raw items + total */
+async function runGroqPass(stage1: Stage1Result): Promise<Stage2Raw> {
   const groq = getGroqClient();
 
   const systemPrompt = `You are a receipt line-item normalizer. You receive raw OCR lines from a grocery/store receipt and must extract only the actual purchased items.
@@ -109,9 +118,22 @@ async function runGroqPass(stage1: Stage1Result): Promise<Stage2Result> {
 Rules:
 - Include only real purchased product lines.
 - Exclude: headers, store name, address, phone, date/time, cashier info, barcode/PLU lines, "Regular Price", "Card Savings", "WT" weight lines, subtotal, tax, total, payment method, thank-you messages, survey URLs.
-- Parse quantity from patterns like "2 QTY ...", "2 @ ...", "2x ..." — default to 1 if not present.
-- Clean up OCR noise into readable item names (e.g. "ORG BNNA" → "Organic Banana").
-- Return ONLY valid JSON matching exactly: { "items": [{ "name": string, "quantity": number }], "total": number }
+- DO NOT include per-item prices in your output. Only name and quantity.
+- Quantity extraction (check in this order):
+  1. Purchase count prefix on the line: "2 QTY ...", "2 @ ...", "2x ..." → quantity = 2 (integer), strip the prefix from the name.
+  2. Embedded size/count token in the item name: "16OZ", "16 OZ", "12 CT", "24 PK", "2 LB", "1 GAL", "32 FL OZ" → strip from the name, set quantity = "16 oz" / "12 ct" etc. (number + lowercase unit, no space between value and unit is fine).
+  3. No quantity info → quantity = 1 (integer).
+- Clean up OCR abbreviations into readable names:
+  * "PNT BUTTR" / "PNUT BUTTR" → "Peanut Butter"
+  * "CHNK CHKN" → "Chunk Chicken"
+  * "NITRIL" → "Nitrile"
+  * "ORG BNNA" → "Organic Banana"
+  * "PARM" → "Parmesan"
+  * "GV" prefix = Great Value brand — keep as "GV"
+  * Strip trailing single-letter tax/category codes (F, N, O, X, T) at end of item name
+  * Strip UPC codes (sequences of 5+ digits)
+- Return ONLY valid JSON: { "items": [{ "name": string, "quantity": number | string }], "total": number }
+- quantity must be an integer for purchase counts, or a lowercase string like "16 oz", "12 ct" for size tokens.
 - Use the total from the raw lines if clearly present, otherwise use the provided fallback total.`;
 
   const userContent = `Receipt total (fallback): ${stage1.total}
@@ -132,9 +154,17 @@ ${stage1.raw_lines.join('\n')}`;
   });
 
   const content = response.choices[0].message.content ?? '{}';
-  const parsed = JSON.parse(content) as Stage2Result;
-  console.log('[scan-receipt][pass2] normalized output:', parsed);
+  const parsed = JSON.parse(content) as Stage2Raw;
+  console.log('[scan-receipt][pass2] raw Groq output:', parsed);
   return parsed;
+}
+
+export async function GET() {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Dev only' }, { status: 403 });
+  }
+  const result = runDevTest();
+  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {
@@ -192,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Pass 2: Groq normalization
-    let stage2: Stage2Result;
+    let stage2: Stage2Raw;
     try {
       stage2 = await runGroqPass(stage1);
     } catch (err: unknown) {
@@ -201,12 +231,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Groq pass failed: ${msg}` }, { status: 502 });
     }
 
-    return NextResponse.json({
+    // Pass 3: deterministic post-processing — quantity extraction + dedup/merge
+    const normalizedItems = normalizeReceiptItems(stage2.items ?? []);
+    console.log('[scan-receipt][pass3] normalized items:', normalizedItems);
+
+    const result: ScanResult = {
       vendor: stage1.vendor,
       date: stage1.date,
-      items: stage2.items,
+      items: normalizedItems,
       total: stage2.total,
-    });
+    };
+
+    return NextResponse.json(result);
   } catch (err: unknown) {
     console.error('[scan-receipt] unexpected error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Scan failed' }, { status: 500 });

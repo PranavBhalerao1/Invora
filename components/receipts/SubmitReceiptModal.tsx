@@ -22,23 +22,41 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const [vendor, setVendor] = useState('');
   const [date, setDate] = useState('');
-  const [lineItems, setLineItems] = useState<{ name: string; price: string }[]>([]);
-  const [subtotal, setSubtotal] = useState('');
-  const [tax, setTax] = useState('');
+  const [lineItems, setLineItems] = useState<{ name: string; quantity: string }[]>([]);
   const [total, setTotal] = useState('');
   const [yourName, setYourName] = useState('');
   const [notes, setNotes] = useState('');
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  function loadFile(f: File) {
     setFile(f);
     const reader = new FileReader();
     reader.onload = ev => setPreview(ev.target?.result as string);
     reader.readAsDataURL(f);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) loadFile(f);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) loadFile(f);
   }
 
   async function handleScan() {
@@ -56,9 +74,12 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
 
       setVendor(parsed.vendor ?? '');
       setDate(parsed.date ?? '');
-      setLineItems((parsed.items ?? []).map(i => ({ name: i.name, price: String(i.price) })));
-      setSubtotal(String(parsed.subtotal ?? ''));
-      setTax(String(parsed.tax ?? ''));
+      setLineItems(
+        (parsed.items ?? []).map(i => ({
+          name: i.name,
+          quantity: String(i.quantity ?? 1),
+        })),
+      );
       setTotal(String(parsed.total ?? ''));
       setStep('review');
     } catch (err: unknown) {
@@ -66,13 +87,6 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
     } finally {
       setScanning(false);
     }
-  }
-
-  function recalcTotal() {
-    const itemsSum = lineItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
-    const taxNum = parseFloat(tax) || 0;
-    setSubtotal(itemsSum.toFixed(2));
-    setTotal((itemsSum + taxNum).toFixed(2));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -87,23 +101,23 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
         submitted_by_name: yourName.trim(),
         vendor: vendor.trim() || null,
         receipt_date: date || null,
-        subtotal: parseFloat(subtotal) || null,
-        tax: parseFloat(tax) || null,
+        subtotal: null,
+        tax: null,
         total: totalNum,
         notes: notes.trim() || null,
         image_url: null as string | null,
       };
 
+      // price: 0 — per-item prices are not tracked; quantity is display-only
       const parsedItems = lineItems
         .filter(i => i.name.trim())
-        .map(i => ({ name: i.name.trim(), price: parseFloat(i.price) || 0 }));
+        .map(i => ({ name: i.name.trim(), price: 0 }));
 
       const receipt = await submitReceipt(roomId, receiptData, parsedItems);
 
       if (file) {
         try {
           const imageUrl = await uploadReceiptImage(file, receipt.id);
-          // Update receipt with image URL (fire and forget for UX; image shown on refresh)
           const { createClient } = await import('@/lib/supabase/client');
           const supabase = createClient();
           await supabase.from('receipts').update({ image_url: imageUrl }).eq('id', receipt.id);
@@ -153,9 +167,15 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
             <div className="p-6 flex flex-col gap-5">
               {/* Upload area */}
               <div
-                className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 cursor-pointer transition-colors hover:bg-white/5"
-                style={{ borderColor: 'rgba(255,117,24,0.3)' }}
+                className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 cursor-pointer transition-colors"
+                style={{
+                  borderColor: dragging ? '#FF7518' : 'rgba(255,117,24,0.3)',
+                  background: dragging ? 'rgba(255,117,24,0.06)' : undefined,
+                }}
                 onClick={() => fileRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
                 {preview ? (
@@ -165,8 +185,12 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid rgba(255,117,24,0.2)' }}>
                       <Camera className="w-7 h-7" style={{ color: '#FF7518' }} />
                     </div>
-                    <p className="font-medium" style={{ color: '#f0f4ff' }}>Take a photo or upload receipt</p>
-                    <p className="text-sm mt-1" style={{ color: '#8b95aa' }}>Tap to open camera or choose a file</p>
+                    <p className="font-medium" style={{ color: '#f0f4ff' }}>
+                      {dragging ? 'Drop to upload' : 'Take a photo or upload receipt'}
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: '#8b95aa' }}>
+                      {dragging ? '' : 'Tap, drag & drop, or choose a file'}
+                    </p>
                   </>
                 )}
               </div>
@@ -219,29 +243,34 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
                 </div>
               </div>
 
-              {/* Line items */}
+              {/* Line items — name + quantity only, no prices */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium" style={{ color: '#8b95aa' }}>Line Items</label>
-                  <button type="button" onClick={() => setLineItems(li => [...li, { name: '', price: '' }])}
+                  <label className="text-xs font-medium" style={{ color: '#8b95aa' }}>Items</label>
+                  <button type="button" onClick={() => setLineItems(li => [...li, { name: '', quantity: '1' }])}
                     className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
                     style={{ color: '#FF7518', border: '1px solid rgba(255,117,24,0.3)' }}>
                     <Plus className="w-3 h-3" /> Add item
                   </button>
                 </div>
+                <div className="mb-1 grid gap-1" style={{ gridTemplateColumns: '1fr 80px 28px' }}>
+                  <span className="text-xs px-3" style={{ color: '#3d4a60' }}>Name</span>
+                  <span className="text-xs px-3" style={{ color: '#3d4a60' }}>Qty</span>
+                  <span />
+                </div>
                 <div className="flex flex-col gap-2">
                   {lineItems.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
+                    <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 80px 28px' }}>
                       <input type="text" value={item.name}
                         onChange={e => { const li = [...lineItems]; li[idx].name = e.target.value; setLineItems(li); }}
-                        placeholder="Item name" className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+                        placeholder="Item name" className="px-3 py-2 rounded-lg text-sm outline-none"
                         style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
-                      <input type="number" step="0.01" min="0" value={item.price}
-                        onChange={e => { const li = [...lineItems]; li[idx].price = e.target.value; setLineItems(li); recalcTotal(); }}
-                        placeholder="0.00" className="w-20 px-3 py-2 rounded-lg text-sm outline-none"
+                      <input type="text" value={item.quantity}
+                        onChange={e => { const li = [...lineItems]; li[idx].quantity = e.target.value; setLineItems(li); }}
+                        placeholder="1" className="px-3 py-2 rounded-lg text-sm outline-none"
                         style={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.08)', color: '#f0f4ff' }} />
-                      <button type="button" onClick={() => { setLineItems(li => li.filter((_, i) => i !== idx)); recalcTotal(); }}
-                        className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
+                      <button type="button" onClick={() => setLineItems(li => li.filter((_, i) => i !== idx))}
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors self-center">
                         <Trash2 className="w-4 h-4 text-red-400" />
                       </button>
                     </div>
@@ -249,20 +278,12 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
                 </div>
               </div>
 
-              {/* Totals */}
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: 'Subtotal', value: subtotal, set: setSubtotal },
-                  { label: 'Tax', value: tax, set: setTax },
-                  { label: 'Total *', value: total, set: setTotal },
-                ].map(({ label, value, set }) => (
-                  <div key={label}>
-                    <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>{label}</label>
-                    <input type="number" step="0.01" min="0" value={value} onChange={e => set(e.target.value)}
-                      placeholder="0.00" className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                      style={{ background: '#1a2235', border: `1px solid ${label.includes('*') ? 'rgba(255,117,24,0.3)' : 'rgba(255,255,255,0.08)'}`, color: '#f0f4ff' }} />
-                  </div>
-                ))}
+              {/* Single total field */}
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: '#8b95aa' }}>Total *</label>
+                <input type="number" step="0.01" min="0" value={total} onChange={e => setTotal(e.target.value)}
+                  placeholder="0.00" className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ background: '#1a2235', border: '1px solid rgba(255,117,24,0.3)', color: '#f0f4ff' }} />
               </div>
 
               <div>

@@ -64,29 +64,19 @@ export default function ReceiptDetailDrawer({ receipt, onClose }: ReceiptDetailD
             {/* Line items */}
             {receipt.items && receipt.items.length > 0 && (
               <div>
-                <p className="text-xs font-medium mb-2" style={{ color: '#8b95aa' }}>Line Items</p>
+                <p className="text-xs font-medium mb-2" style={{ color: '#8b95aa' }}>Items</p>
                 <div className="flex flex-col gap-1">
                   {receipt.items.map(item => (
-                    <div key={item.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: '#1a2235' }}>
+                    <div key={item.id} className="px-3 py-2 rounded-lg" style={{ background: '#1a2235' }}>
                       <span className="text-sm" style={{ color: '#f0f4ff' }}>{item.name}</span>
-                      <span className="text-sm font-medium" style={{ color: '#f0f4ff' }}>${item.price.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Totals */}
+            {/* Total */}
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-              {[
-                { label: 'Subtotal', value: fmt(receipt.subtotal) },
-                { label: 'Tax', value: fmt(receipt.tax) },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between px-4 py-2.5 text-sm" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#8b95aa' }}>
-                  <span>{row.label}</span>
-                  <span>{row.value}</span>
-                </div>
-              ))}
               <div className="flex justify-between px-4 py-3 text-base font-bold" style={{ color: '#f0f4ff' }}>
                 <span>Total</span>
                 <span style={{ color: '#FF7518' }}>{fmt(receipt.total)}</span>
