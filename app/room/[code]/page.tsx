@@ -11,7 +11,6 @@ import { Room, Receipt } from '@/types';
 import { InventoryItem, deriveStatus, deriveTotalAmount } from '@/types/inventory';
 
 import KPICard from '@/components/inventory/KPICard';
-import CategoryProgress from '@/components/inventory/CategoryProgress';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import ItemModal from '@/components/inventory/ItemModal';
 import DeleteDialog from '@/components/inventory/DeleteDialog';
@@ -259,8 +258,6 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
               <KPICard label="Pending" value={pending} icon={<Clock className="w-5 h-5" />} color="#f87171" delay={200} />
               <KPICard label="Partial" value={partial} icon={<AlertTriangle className="w-5 h-5" />} color="#facc15" delay={300} />
             </div>
-
-            <CategoryProgress items={items} />
 
             <div className="flex items-center justify-between">
               <div>

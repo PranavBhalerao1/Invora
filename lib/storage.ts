@@ -1,19 +1,11 @@
 import { InventoryItem, deriveStatus, deriveTotalAmount } from '@/types/inventory';
-import seedData from '@/data/seed.json';
 
 const STORAGE_KEY = 'ssv_inventory';
 
 export function loadInventory(): InventoryItem[] {
   if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seeded = (seedData as InventoryItem[]).map(item => ({
-      ...item,
-      status: deriveStatus(item.arrived, item.needed),
-    }));
-    saveInventory(seeded);
-    return seeded;
-  }
+  if (!raw) return [];
   try {
     const items = JSON.parse(raw) as InventoryItem[];
     return items.map(item => ({

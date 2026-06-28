@@ -1,6 +1,5 @@
 import { createClient } from './client';
 import { Room } from '@/types';
-import seedData from '@/data/seed.json';
 
 function generateJoinCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -59,7 +58,7 @@ export async function createRoom(name: string): Promise<Room> {
     throw new Error(error.message);
   }
 
-  // Auto-join as member — must succeed before seeding inventory (RLS requires membership)
+  // Auto-join creator as member
   const { error: memberError } = await supabase
     .from('room_members')
     .insert({ room_id: room.id, user_id: user.id });
@@ -67,24 +66,6 @@ export async function createRoom(name: string): Promise<Room> {
   if (memberError) {
     console.error('createRoom: room_members insert failed', { message: memberError.message, code: memberError.code, details: memberError.details });
     throw new Error(memberError.message);
-  }
-
-  // Seed inventory
-  const seedItems = (seedData as Array<Record<string, unknown>>).map(item => ({
-    room_id: room.id,
-    name: item.name as string,
-    category: item.category as string,
-    quantity: item.quantity as number,
-    unit: item.unit as string,
-    needed: item.needed as number,
-    arrived: item.arrived as number,
-    assigned_to: (item.assignedTo as string) ?? null,
-    notes: (item.notes as string) ?? null,
-  }));
-
-  const { error: seedError } = await supabase.from('inventory_items').insert(seedItems);
-  if (seedError) {
-    console.error('createRoom: inventory seed failed', { message: seedError.message, code: seedError.code });
   }
 
   return room;
