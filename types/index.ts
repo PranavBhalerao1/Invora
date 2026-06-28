@@ -24,8 +24,6 @@ export interface Receipt {
   submitted_by_name: string;
   vendor: string | null;
   receipt_date: string | null;
-  subtotal: number | null;
-  tax: number | null;
   total: number;
   image_url: string | null;
   reimbursed: boolean;
@@ -39,7 +37,7 @@ export interface ReceiptItem {
   id: string;
   receipt_id: string;
   name: string;
-  price: number; // legacy DB column; always 0 for receipts submitted after quantity migration
+  quantity: string;
 }
 
 export interface GeminiReceiptResult {

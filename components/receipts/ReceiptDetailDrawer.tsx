@@ -67,8 +67,13 @@ export default function ReceiptDetailDrawer({ receipt, onClose }: ReceiptDetailD
                 <p className="text-xs font-medium mb-2" style={{ color: '#8b95aa' }}>Items</p>
                 <div className="flex flex-col gap-1">
                   {receipt.items.map(item => (
-                    <div key={item.id} className="px-3 py-2 rounded-lg" style={{ background: '#1a2235' }}>
+                    <div key={item.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: '#1a2235' }}>
                       <span className="text-sm" style={{ color: '#f0f4ff' }}>{item.name}</span>
+                      {item.quantity && item.quantity !== '1' && (
+                        <span className="text-xs ml-3 shrink-0 px-2 py-0.5 rounded-md" style={{ background: 'rgba(255,117,24,0.12)', color: '#ffaa5e' }}>
+                          {item.quantity}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

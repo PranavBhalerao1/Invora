@@ -19,13 +19,11 @@ export async function submitReceipt(
     submitted_by_name: string;
     vendor: string | null;
     receipt_date: string | null;
-    subtotal: number | null;
-    tax: number | null;
     total: number;
     notes: string | null;
     image_url: string | null;
   },
-  items: { name: string; price: number }[]
+  items: { name: string; quantity: string }[]
 ): Promise<Receipt> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -40,7 +38,11 @@ export async function submitReceipt(
   if (error) throw error;
 
   if (items.length > 0) {
-    const lineItems = items.map(item => ({ receipt_id: receiptRow.id, name: item.name, price: item.price }));
+    const lineItems = items.map(item => ({
+      receipt_id: receiptRow.id,
+      name: item.name,
+      quantity: item.quantity,
+    }));
     await supabase.from('receipt_items').insert(lineItems);
   }
 

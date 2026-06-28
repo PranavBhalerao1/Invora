@@ -101,17 +101,14 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
         submitted_by_name: yourName.trim(),
         vendor: vendor.trim() || null,
         receipt_date: date || null,
-        subtotal: null,
-        tax: null,
         total: totalNum,
         notes: notes.trim() || null,
         image_url: null as string | null,
       };
 
-      // price: 0 — per-item prices are not tracked; quantity is display-only
       const parsedItems = lineItems
         .filter(i => i.name.trim())
-        .map(i => ({ name: i.name.trim(), price: 0 }));
+        .map(i => ({ name: i.name.trim(), quantity: i.quantity.trim() || '1' }));
 
       const receipt = await submitReceipt(roomId, receiptData, parsedItems);
 
@@ -128,7 +125,7 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
       }
 
       toast.success('Receipt submitted!');
-      onSubmitted({ ...receipt, items: parsedItems.map((i, idx) => ({ id: String(idx), receipt_id: receipt.id, ...i })) });
+      onSubmitted({ ...receipt, items: parsedItems.map((i, idx) => ({ id: String(idx), receipt_id: receipt.id, name: i.name, quantity: i.quantity })) });
       onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Submit failed');
