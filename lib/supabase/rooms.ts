@@ -46,10 +46,20 @@ export async function createRoom(name: string): Promise<Room> {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('createRoom: rooms insert failed', { message: error.message, code: error.code, details: error.details, hint: error.hint });
+    throw new Error(error.message);
+  }
 
-  // Auto-join as member
-  await supabase.from('room_members').insert({ room_id: room.id, user_id: user.id });
+  // Auto-join as member — must succeed before seeding inventory (RLS requires membership)
+  const { error: memberError } = await supabase
+    .from('room_members')
+    .insert({ room_id: room.id, user_id: user.id });
+
+  if (memberError) {
+    console.error('createRoom: room_members insert failed', { message: memberError.message, code: memberError.code, details: memberError.details });
+    throw new Error(memberError.message);
+  }
 
   // Seed inventory
   const seedItems = (seedData as Array<Record<string, unknown>>).map(item => ({
@@ -64,7 +74,10 @@ export async function createRoom(name: string): Promise<Room> {
     notes: (item.notes as string) ?? null,
   }));
 
-  await supabase.from('inventory_items').insert(seedItems);
+  const { error: seedError } = await supabase.from('inventory_items').insert(seedItems);
+  if (seedError) {
+    console.error('createRoom: inventory seed failed', { message: seedError.message, code: seedError.code });
+  }
 
   return room;
 }

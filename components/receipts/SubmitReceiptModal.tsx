@@ -48,7 +48,10 @@ export default function SubmitReceiptModal({ roomId, onClose, onSubmitted }: Sub
       const formData = new FormData();
       formData.append('image', file);
       const res = await fetch('/api/scan-receipt', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Failed to scan receipt');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? 'Failed to scan receipt');
+      }
       const parsed: GeminiReceiptResult = await res.json();
 
       setVendor(parsed.vendor ?? '');

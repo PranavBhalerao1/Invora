@@ -136,7 +136,4 @@ create policy "users can join rooms" on room_members
   for insert with check (auth.uid() = user_id);
 
 create policy "members can view room_members" on room_members
-  for select using (
-    exists (select 1 from room_members rm2 where rm2.room_id = room_members.room_id and rm2.user_id = auth.uid())
-    or exists (select 1 from rooms where id = room_members.room_id and admin_id = auth.uid())
-  );
+  for select using (auth.uid() = user_id);
