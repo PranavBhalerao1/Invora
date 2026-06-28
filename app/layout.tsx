@@ -13,17 +13,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn('h-full dark', geist.variable)}>
+    <html lang="en" className={cn('h-full', geist.variable)}>
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster
-          theme="dark"
+          theme="light"
           position="bottom-right"
           toastOptions={{
             style: {
-              background: '#131c2e',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: '#f0f4ff',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              color: '#111827',
             },
           }}
         />

@@ -63,6 +63,8 @@ export default function RoomHubPage() {
     router.push('/login');
   }
 
+  const firstName = displayName.includes('@') ? '' : displayName.split(' ')[0];
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
@@ -86,47 +88,62 @@ export default function RoomHubPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 sm:py-14">
+        {/* Hero */}
+        <div className="mb-10">
+          <h2 className="text-2xl font-bold text-foreground">
+            {firstName ? `Welcome back, ${firstName}` : 'Your Rooms'}
+          </h2>
+          <p className="text-base text-muted-foreground mt-1.5">
+            {rooms.length > 0
+              ? `${rooms.length} camp workspace${rooms.length !== 1 ? 's' : ''}`
+              : 'Manage your camp workspaces below.'}
+          </p>
+        </div>
+
+        {/* Action row */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Your Rooms</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">Camp workspaces you belong to</p>
-          </div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+            Workspaces
+          </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
-              <LogIn className="size-3.5" />
+            <Button variant="outline" onClick={() => setShowJoin(true)}>
+              <LogIn className="size-4" />
               <span className="hidden sm:inline">Join Room</span>
             </Button>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="size-3.5" />
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="size-4" />
               <span className="hidden sm:inline">Create Room</span>
             </Button>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-7 h-7 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
           </div>
         ) : rooms.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-20 text-center gap-2">
-            <Package className="size-8 text-muted-foreground/30 mb-2" />
-            <p className="font-semibold text-sm text-foreground">No rooms yet</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Create a new camp workspace or join one with a 6-character code.
-            </p>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm" onClick={() => setShowJoin(true)}>
+          <div className="border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center py-24 text-center gap-3">
+            <Package className="size-10 text-muted-foreground/30 mb-1" />
+            <div>
+              <p className="font-semibold text-base text-foreground">No rooms yet</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+                Create a new camp workspace or join one with a 6-character code.
+              </p>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Button variant="outline" onClick={() => setShowJoin(true)}>
+                <LogIn className="size-4" />
                 Join Room
               </Button>
-              <Button size="sm" onClick={() => setShowCreate(true)}>
-                <Plus className="size-3.5" />
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="size-4" />
                 Create Room
               </Button>
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rooms.map((room) => (
               <RoomCard
                 key={room.id}

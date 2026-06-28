@@ -200,7 +200,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-7 h-7 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
       </div>
     );
   }
@@ -234,7 +234,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-semibold text-sm text-foreground truncate">{room.name}</h1>
                 {isAdmin && (
-                  <span className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground shrink-0">
+                  <span className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground shrink-0">
                     <Shield className="size-3" />
                     Admin
                   </span>
@@ -293,11 +293,11 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
         </div>
       </div>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 flex flex-col gap-5">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-6">
         {tab === 'inventory' ? (
           <>
-            {/* KPI row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* KPI cards — 2-column, spacious */}
+            <div className="grid grid-cols-2 gap-4">
               <KPICard
                 label="Total Items"
                 value={total}
@@ -328,15 +328,15 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
             </div>
 
             {/* Section header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-2">
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Inventory</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <h2 className="text-base font-semibold text-foreground">Inventory</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
                   {items.length} item{items.length !== 1 ? 's' : ''} tracked
                 </p>
               </div>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleExportCSV}
                 className="sm:hidden"
@@ -370,7 +370,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
       {tab === 'inventory' && (
         <button
           onClick={() => setShowAddModal(true)}
-          className="fixed bottom-6 right-6 w-13 h-13 rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
+          className="fixed bottom-6 right-6 w-13 h-13 rounded-full flex items-center justify-center shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
           aria-label="Add item"
         >
           <Plus className="size-5 text-white" />
@@ -380,7 +380,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
       {tab === 'receipts' && (
         <button
           onClick={() => setShowReceiptModal(true)}
-          className="fixed bottom-6 right-6 rounded-full flex items-center gap-2 px-5 h-12 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
+          className="fixed bottom-6 right-6 rounded-full flex items-center gap-2 px-5 h-12 shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
           aria-label="Submit receipt"
         >
           <Plus className="size-4 text-white" />
