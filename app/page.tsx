@@ -26,6 +26,7 @@ import { SearchBar } from '@/components/ui/search-bar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { Dashboard3DSceneClient } from '@/components/ui/Dashboard3DSceneClient';
 
 function greeting() {
   const h = new Date().getHours();
@@ -196,6 +197,8 @@ export default function RoomHubPage() {
                   <div className="relative overflow-hidden rounded-2xl border border-line bg-elevated shadow-card transition-shadow duration-300 group-hover:shadow-lift group-focus-visible:ring-[3px] group-focus-visible:ring-accent/20">
                     <div className="absolute inset-0 bg-grid opacity-[0.4] mask-fade-b" />
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
+                    {/* Subtle blue ambient behind the 3D scene */}
+                    <div className="absolute inset-y-0 right-0 hidden w-3/5 bg-gradient-to-l from-[#eff4ff]/55 to-transparent sm:block" />
                     <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                       <div className="flex items-start gap-4">
                         <div className="flex size-14 items-center justify-center rounded-2xl border border-line bg-surface text-accent shadow-xs">
@@ -224,6 +227,11 @@ export default function RoomHubPage() {
                           </div>
                         </div>
                       </div>
+                      {/* 3D scene — desktop only, between content and button */}
+                      <div className="pointer-events-none hidden h-[168px] w-48 shrink-0 sm:block">
+                        <Dashboard3DSceneClient className="h-full w-full" />
+                      </div>
+
                       <Button className="self-start sm:self-auto" tabIndex={-1}>
                         Open room
                         <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" />
