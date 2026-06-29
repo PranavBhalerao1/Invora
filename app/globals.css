@@ -55,71 +55,68 @@
 
 /* ─── Light theme palette ─── */
 :root {
-  --background: #f4f6fb;
-  --foreground: #0f1623;
+  --background: #f8f9fc;
+  --foreground: #0d0f1a;
   --card: #ffffff;
-  --card-foreground: #0f1623;
+  --card-foreground: #0d0f1a;
   --popover: #ffffff;
-  --popover-foreground: #0f1623;
+  --popover-foreground: #0d0f1a;
   --primary: #4f46e5;
   --primary-foreground: #ffffff;
   --secondary: #eef0f8;
   --secondary-foreground: #374151;
-  --muted: #eef0f8;
-  --muted-foreground: #5e6880;
+  --muted: #f1f3f9;
+  --muted-foreground: #4b5468;
   --accent: #eef2ff;
   --accent-foreground: #4338ca;
-  --destructive: #ef4444;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #dde1ee;
-  --input: #dde1ee;
+  --border: #e2e5ef;
+  --input: #e2e5ef;
   --ring: #4f46e5;
   --radius: 0.875rem;
   --chart-1: #4f46e5;
   --chart-2: #16a34a;
   --chart-3: #d97706;
-  --chart-4: #ef4444;
+  --chart-4: #dc2626;
   --chart-5: #6b7280;
   --sidebar: #ffffff;
-  --sidebar-foreground: #111827;
+  --sidebar-foreground: #0d0f1a;
   --sidebar-primary: #4f46e5;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #eef2ff;
   --sidebar-accent-foreground: #4f46e5;
-  --sidebar-border: #e5e7eb;
+  --sidebar-border: #e2e5ef;
   --sidebar-ring: #4f46e5;
 }
 
 /* ─── Surface utilities ─── */
 .glass {
   background: #ffffff;
-  border: 1px solid #dde1ee;
+  border: 1px solid #e2e5ef;
   border-radius: 1rem;
-  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .header-surface {
-  background: rgba(244, 246, 251, 0.92);
+  background: rgba(248, 249, 252, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(79, 70, 229, 0.08);
+  border-bottom: 1px solid #e2e5ef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ─── Card elevation system ─── */
 .card-elevated {
   background: #ffffff;
-  border: 1px solid rgba(79, 70, 229, 0.08);
-  border-radius: 1.25rem;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.05),
-    0 4px 16px rgba(79, 70, 229, 0.06);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  border: 1px solid #e2e5ef;
+  border-radius: 1rem;
+  box-shadow: 0 2px 12px rgba(79, 70, 229, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .card-elevated:hover {
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    0 12px 40px rgba(79, 70, 229, 0.13);
+  box-shadow: 0 8px 28px rgba(79, 70, 229, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
 }
 
@@ -137,7 +134,7 @@ body {
 
 select option {
   background-color: #ffffff;
-  color: #111827;
+  color: #0d0f1a;
 }
 
 /* Hide number input spinners */
@@ -152,7 +149,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f4f6fb;
+  background: #f8f9fc;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -172,6 +169,8 @@ input[type="number"]::-webkit-outer-spin-button {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 15px;
+    line-height: 1.6;
   }
   html {
     @apply font-sans;
@@ -184,8 +183,8 @@ input[type="number"]::-webkit-outer-spin-button {
 /* ─── Shared form utilities ─── */
 @layer utilities {
   .textarea-field {
-    @apply w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm text-foreground;
-    @apply placeholder:text-muted-foreground/60 outline-none transition-colors resize-none;
-    @apply focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20;
+    @apply w-full px-4 py-3 rounded-[10px] border-[1.5px] border-border bg-white text-[15px] text-foreground;
+    @apply placeholder:text-muted-foreground outline-none transition-all resize-none;
+    @apply focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/10;
   }
 }

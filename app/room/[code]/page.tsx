@@ -200,7 +200,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
       </div>
     );
   }
@@ -217,8 +217,8 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 header-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -227,14 +227,14 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
             >
               <ArrowLeft className="size-4" />
             </Button>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-accent border border-primary/20">
-              <Package className="size-3.5 text-primary" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-accent border border-primary/20">
+              <Package className="size-4 text-primary" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-semibold text-sm text-foreground truncate">{room.name}</h1>
+                <h1 className="font-semibold text-[15px] text-foreground truncate">{room.name}</h1>
                 {isAdmin && (
-                  <span className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground shrink-0">
+                  <span className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shrink-0">
                     <Shield className="size-3" />
                     Admin
                   </span>
@@ -266,8 +266,8 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
       </header>
 
       {/* Tab bar */}
-      <div className="sticky top-14 z-30 bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="sticky top-16 z-30 bg-background border-b border-border">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
           <div className="flex">
             {(
               [
@@ -279,7 +279,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+                  'flex items-center gap-2 px-4 py-3.5 text-[15px] font-medium border-b-2 -mb-px transition-colors',
                   tab === t
                     ? 'text-primary border-primary'
                     : 'text-muted-foreground border-transparent hover:text-foreground'
@@ -293,10 +293,10 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
         </div>
       </div>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-6">
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 sm:px-6 lg:px-12 py-10 flex flex-col gap-8">
         {tab === 'inventory' ? (
           <>
-            {/* KPI cards — 2-column, spacious */}
+            {/* KPI cards */}
             <div className="grid grid-cols-2 gap-4">
               <KPICard
                 label="Total Items"
@@ -328,10 +328,10 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
             </div>
 
             {/* Section header */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Inventory</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <h2 className="text-lg font-semibold text-foreground">Inventory</h2>
+                <p className="text-[15px] text-muted-foreground mt-0.5">
                   {items.length} item{items.length !== 1 ? 's' : ''} tracked
                 </p>
               </div>
@@ -370,7 +370,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
       {tab === 'inventory' && (
         <button
           onClick={() => setShowAddModal(true)}
-          className="fixed bottom-6 right-6 w-13 h-13 rounded-full flex items-center justify-center shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
           aria-label="Add item"
         >
           <Plus className="size-5 text-white" />
@@ -380,11 +380,11 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
       {tab === 'receipts' && (
         <button
           onClick={() => setShowReceiptModal(true)}
-          className="fixed bottom-6 right-6 rounded-full flex items-center gap-2 px-5 h-12 shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
+          className="fixed bottom-6 right-6 rounded-full flex items-center gap-2 px-6 h-12 shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
           aria-label="Submit receipt"
         >
           <Plus className="size-4 text-white" />
-          <span className="text-white text-sm font-semibold">Submit Receipt</span>
+          <span className="text-white text-[15px] font-semibold">Submit Receipt</span>
         </button>
       )}
 

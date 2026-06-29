@@ -135,7 +135,7 @@ export default function InventoryTable({
           value={categoryFilter}
           onValueChange={(v) => setCategoryFilter(v as Category | 'All')}
         >
-          <SelectTrigger className="w-full sm:w-[170px] bg-muted">
+          <SelectTrigger className="w-full sm:w-[170px]">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -151,7 +151,7 @@ export default function InventoryTable({
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as Status | 'All')}
         >
-          <SelectTrigger className="w-full sm:w-[140px] bg-muted">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>

@@ -174,7 +174,7 @@ export default function ItemModal({ item, onSave, onClose }: ItemModalProps) {
                   value={form.category}
                   onValueChange={(v) => setForm((f) => ({ ...f, category: v as Category }))}
                 >
-                  <SelectTrigger className="bg-muted">
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
