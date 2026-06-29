@@ -3,7 +3,7 @@ import { Toaster } from 'sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SSV Camp App',
+  title: 'Invora App',
   description: 'Inventory & receipts for Sangha Shiksha Varg camp',
 };
 

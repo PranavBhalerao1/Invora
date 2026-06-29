@@ -53,7 +53,7 @@ export function AuthLayout({
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-line bg-elevated/70 px-3 py-1 text-xs font-medium text-muted backdrop-blur-sm">
               <span className="size-1.5 rounded-full bg-success" />
-              Built for Sangha Shiksha Varg camps
+              Built for nonprofits and volunteers
             </span>
           </div>
 

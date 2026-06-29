@@ -54,7 +54,7 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
           <Field label="Room name" htmlFor="room-name">
             <Input
               id="room-name"
-              placeholder="e.g. SSV NJ 2026"
+              placeholder="e.g. NJ Camp 2026"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus

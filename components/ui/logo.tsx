@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export function Logo({
   className,
   showWordmark = true,
-  wordmark = "SSV Camp",
+  wordmark = "Invora",
 }: {
   className?: string;
   showWordmark?: boolean;
