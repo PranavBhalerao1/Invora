@@ -1,62 +1,83 @@
-import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { Slot } from 'radix-ui';
-import { cn } from '@/lib/utils';
+"use client";
 
-const buttonVariants = cva(
-  'group/button inline-flex shrink-0 items-center justify-center gap-2 border border-transparent font-semibold whitespace-nowrap transition-all duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
-  {
-    variants: {
-      variant: {
-        default:
-          'bg-primary text-primary-foreground hover:bg-[#4338ca] active:bg-primary/95 shadow-[0_1px_3px_rgba(79,70,229,0.3)] hover:shadow-[0_4px_12px_rgba(79,70,229,0.25)]',
-        outline:
-          'border-[1.5px] border-border bg-white text-foreground hover:border-primary/50 hover:text-primary',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/70',
-        ghost:
-          'hover:bg-muted hover:text-foreground text-muted-foreground',
-        destructive:
-          'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20',
-        link: 'text-primary underline-offset-4 hover:underline',
-      },
-      size: {
-        default: 'h-11 px-6 text-[15px] rounded-[10px]',
-        sm: 'h-9 px-4 text-sm rounded-lg',
-        lg: 'h-12 px-8 text-[15px] rounded-[10px]',
-        icon: 'size-11 rounded-[10px]',
-        'icon-sm': 'size-9 rounded-lg',
-        'icon-lg': 'size-11 rounded-[10px]',
-        xs: 'h-7 px-3 text-xs rounded-lg gap-1',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
-  }
-);
+import * as React from "react";
+import { Slot } from "radix-ui";
+import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-function Button({
-  className,
-  variant = 'default',
-  size = 'default',
-  asChild = false,
-  ...props
-}: React.ComponentProps<'button'> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  }) {
-  const Comp = asChild ? Slot.Root : 'button';
-  return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  );
+type Variant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "outline"
+  | "danger"
+  | "subtle"
+  // backward-compatible aliases
+  | "default"
+  | "destructive"
+  | "link";
+type Size = "sm" | "md" | "lg" | "icon" | "icon-sm" | "default" | "xs" | "icon-lg";
+
+const variants: Record<Variant, string> = {
+  primary: "bg-accent text-accent-fg shadow-xs hover:bg-accent-hover active:bg-accent-hover",
+  secondary: "bg-ink text-white shadow-xs hover:bg-ink-soft active:bg-ink-soft",
+  outline:
+    "border border-line-strong bg-elevated text-ink-soft shadow-xs hover:bg-subtle hover:text-ink",
+  ghost: "text-ink-soft hover:bg-subtle hover:text-ink",
+  subtle: "bg-subtle text-ink-soft hover:bg-line-strong/60 hover:text-ink",
+  danger: "bg-danger text-white shadow-xs hover:brightness-95 active:brightness-90",
+  // aliases
+  default: "bg-accent text-accent-fg shadow-xs hover:bg-accent-hover active:bg-accent-hover",
+  destructive: "bg-danger text-white shadow-xs hover:brightness-95 active:brightness-90",
+  link: "text-accent underline-offset-4 hover:underline",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "h-8 gap-1.5 rounded-lg px-3 text-[13px]",
+  md: "h-9.5 gap-2 rounded-lg px-4 text-sm",
+  lg: "h-11 gap-2 rounded-lg px-5 text-[15px]",
+  icon: "h-9.5 w-9.5 rounded-lg",
+  "icon-sm": "h-8 w-8 rounded-lg",
+  // aliases
+  default: "h-9.5 gap-2 rounded-lg px-4 text-sm",
+  xs: "h-7 gap-1 rounded-lg px-3 text-xs",
+  "icon-lg": "h-11 w-11 rounded-lg",
+};
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: Size;
+  loading?: boolean;
+  asChild?: boolean;
 }
 
-export { Button, buttonVariants };
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    { className, variant = "primary", size = "md", loading, asChild = false, disabled, children, ...props },
+    ref,
+  ) => {
+    const Comp = asChild ? Slot.Root : "button";
+    return (
+      <Comp
+        ref={ref}
+        disabled={disabled || loading}
+        className={cn(
+          "relative inline-flex select-none items-center justify-center font-medium whitespace-nowrap",
+          "transition-[background,color,box-shadow,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "outline-none focus-visible:ring-[3px] focus-visible:ring-accent/15 focus-visible:ring-offset-0",
+          "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+          variants[variant],
+          sizes[size],
+          className,
+        )}
+        {...props}
+      >
+        {loading && <Loader2 className="size-4 animate-spin" />}
+        {children}
+      </Comp>
+    );
+  },
+);
+Button.displayName = "Button";
+
+export { Button as default };

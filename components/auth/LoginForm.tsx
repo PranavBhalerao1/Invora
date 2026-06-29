@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
+import { Field, Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -33,47 +33,50 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="you@example.com"
-            className="pl-9"
-          />
-        </div>
-      </div>
+      <Field label="Email" htmlFor="email">
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+      </Field>
 
-      <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
+      <Field label="Password" htmlFor="password">
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <Input
-            type="password"
+            id="password"
+            type={showPw ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
             placeholder="••••••••"
-            className="pl-9"
+            autoComplete="current-password"
+            className="pr-10"
+            required
           />
+          <button
+            type="button"
+            onClick={() => setShowPw((s) => !s)}
+            aria-label={showPw ? 'Hide password' : 'Show password'}
+            className="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-faint hover:bg-subtle hover:text-ink-soft"
+          >
+            {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
         </div>
-      </div>
+      </Field>
 
-      <Button type="submit" disabled={loading} className="w-full mt-1">
-        <LogIn className="size-4" />
-        {loading ? 'Signing in…' : 'Sign In'}
+      <Button type="submit" size="lg" loading={loading} className="mt-1 w-full">
+        {!loading && (
+          <>
+            Sign in
+            <ArrowRight className="size-4" />
+          </>
+        )}
+        {loading && 'Signing in…'}
       </Button>
-
-      <p className="text-center text-sm text-muted-foreground">
-        No account?{' '}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
-          Create one
-        </Link>
-      </p>
     </form>
   );
 }

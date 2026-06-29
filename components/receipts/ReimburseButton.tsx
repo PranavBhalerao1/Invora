@@ -33,7 +33,7 @@ export default function ReimburseButton({ receiptId, onReimbursed }: ReimburseBu
       variant="ghost"
       onClick={handleClick}
       disabled={loading}
-      className="text-success border border-success/25 bg-success/8 hover:bg-success/15 hover:text-success"
+      className="border border-success/25 bg-success-soft text-success hover:bg-success/15 hover:text-success"
     >
       <CheckCircle className="size-3" />
       {loading ? 'Updating…' : 'Reimburse'}

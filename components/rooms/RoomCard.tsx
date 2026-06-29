@@ -1,55 +1,73 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, Package, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, Package, Users, Shield } from 'lucide-react';
 import { Room } from '@/types';
 import CopyCode from '@/components/ui/CopyCode';
-import { Button } from '@/components/ui/button';
+import { relativeTime } from '@/lib/utils';
 
 interface RoomCardProps {
   room: Room;
   isAdmin: boolean;
   memberCount: number;
   itemCount: number;
+  index?: number;
 }
 
-export default function RoomCard({ room, isAdmin, memberCount, itemCount }: RoomCardProps) {
+export default function RoomCard({ room, isAdmin, memberCount, itemCount, index = 0 }: RoomCardProps) {
   return (
-    <div className="group card-elevated flex flex-col overflow-hidden">
-      {/* Card body */}
-      <div className="flex-1 p-6 pb-4">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <h3 className="font-semibold text-lg text-foreground leading-snug">{room.name}</h3>
-          {isAdmin && (
-            <span className="px-2.5 py-1 rounded-md text-xs font-semibold tracking-wide uppercase bg-accent text-accent-foreground border border-primary/15 shrink-0 mt-0.5">
-              Admin
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <Link href={`/room/${room.join_code}`} className="group block focus:outline-none">
+        <motion.div
+          whileHover={{ y: -4 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden rounded-xl border border-line bg-elevated p-5 shadow-card transition-shadow duration-300 group-hover:shadow-lift group-focus-visible:ring-[3px] group-focus-visible:ring-accent/20"
+        >
+          <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-accent/40 to-indigo-500/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+          <div className="relative flex items-start justify-between">
+            <div className="flex size-11 items-center justify-center rounded-xl border border-line bg-surface text-accent shadow-xs">
+              <Package className="size-5" />
+            </div>
+            <span className="-translate-x-1 flex size-7 items-center justify-center rounded-full text-faint opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+              <ArrowUpRight className="size-4" />
             </span>
-          )}
-        </div>
-        <CopyCode code={room.join_code} label="Join code:" />
-      </div>
+          </div>
 
-      {/* Stats row */}
-      <div className="flex items-center gap-6 px-6 py-3.5 border-t border-border/60 text-sm text-muted-foreground bg-muted/20">
-        <span className="flex items-center gap-2">
-          <Users className="size-4 shrink-0" />
-          {memberCount} member{memberCount !== 1 ? 's' : ''}
-        </span>
-        <span className="flex items-center gap-2">
-          <Package className="size-4 shrink-0" />
-          {itemCount} item{itemCount !== 1 ? 's' : ''}
-        </span>
-      </div>
+          <div className="relative mt-4">
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-[15px] font-semibold tracking-tight text-ink">{room.name}</h3>
+              {isAdmin && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                  <Shield className="size-2.5" />
+                  Admin
+                </span>
+              )}
+            </div>
+            <div className="mt-2" onClick={(e) => e.preventDefault()}>
+              <CopyCode code={room.join_code} label="Code" />
+            </div>
+          </div>
 
-      {/* CTA */}
-      <div className="px-6 py-4">
-        <Button asChild className="w-full justify-between">
-          <Link href={`/room/${room.join_code}`}>
-            Open Room
-            <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform duration-200" />
-          </Link>
-        </Button>
-      </div>
-    </div>
+          <div className="relative mt-5 flex items-center justify-between border-t border-line pt-4 text-[12px] text-faint">
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="size-3.5" />
+              {memberCount} member{memberCount !== 1 ? 's' : ''}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Package className="size-3.5" />
+              {itemCount} item{itemCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="relative mt-2 text-[11px] text-faint">Created {relativeTime(room.created_at)}</div>
+        </motion.div>
+      </Link>
+    </motion.div>
   );
 }

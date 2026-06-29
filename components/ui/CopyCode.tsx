@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CopyCodeProps {
   code: string;
   label?: string;
+  className?: string;
 }
 
-export default function CopyCode({ code, label }: CopyCodeProps) {
+export default function CopyCode({ code, label, className }: CopyCodeProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -22,18 +24,15 @@ export default function CopyCode({ code, label }: CopyCodeProps) {
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono font-semibold transition-colors hover:bg-accent bg-accent/50 text-primary border border-primary/20"
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wider text-ink-soft shadow-xs transition-colors hover:bg-line-strong/50',
+        className,
+      )}
       title="Copy join code"
     >
-      {label && (
-        <span className="font-sans font-normal text-muted-foreground">{label}</span>
-      )}
+      {label && <span className="font-sans font-normal text-faint">{label}</span>}
       {code}
-      {copied ? (
-        <Check className="size-3 shrink-0" />
-      ) : (
-        <Copy className="size-3 shrink-0" />
-      )}
+      {copied ? <Check className="size-3 shrink-0 text-success" /> : <Copy className="size-3 shrink-0 text-faint" />}
     </button>
   );
 }

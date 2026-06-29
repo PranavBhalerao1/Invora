@@ -1,8 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, use } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Receipt as ReceiptIcon, Plus, Download, ArrowLeft, LogOut, Shield } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  Package,
+  Receipt as ReceiptIcon,
+  Plus,
+  Download,
+  ChevronLeft,
+  LogOut,
+  Shield,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getRoomByCode } from '@/lib/supabase/rooms';
 import {
@@ -17,7 +30,6 @@ import { getReceipts } from '@/lib/supabase/receipts';
 import { Room, Receipt } from '@/types';
 import { InventoryItem, deriveStatus, deriveTotalAmount } from '@/types/inventory';
 
-import KPICard from '@/components/inventory/KPICard';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import ItemModal from '@/components/inventory/ItemModal';
 import DeleteDialog from '@/components/inventory/DeleteDialog';
@@ -26,9 +38,10 @@ import ReceiptTable from '@/components/receipts/ReceiptTable';
 import SubmitReceiptModal from '@/components/receipts/SubmitReceiptModal';
 import CopyCode from '@/components/ui/CopyCode';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Tabs } from '@/components/ui/tabs';
+import { Fab } from '@/components/ui/fab';
+import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
 
-import { CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Tab = 'inventory' | 'receipts';
@@ -199,8 +212,11 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      <div className="flex min-h-dvh items-center justify-center bg-canvas">
+        <div className="relative size-10">
+          <div className="absolute inset-0 rounded-full border-2 border-accent/15" />
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        </div>
       </div>
     );
   }
@@ -212,201 +228,144 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
   const pending = items.filter((i) => i.status === 'pending').length;
   const partial = items.filter((i) => i.status === 'partial').length;
   const arrivedPct = total > 0 ? Math.round((arrived / total) * 100) : 0;
+  const pendingReceipts = receipts.filter((r) => !r.reimbursed).length;
+
+  const tabs = [
+    { value: 'inventory', label: 'Inventory', icon: Package },
+    { value: 'receipts', label: 'Receipts', icon: ReceiptIcon, count: pendingReceipts },
+  ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 header-surface">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => router.push('/')}
-              className="shrink-0"
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-accent border border-primary/20">
-              <Package className="size-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-semibold text-[15px] text-foreground truncate">{room.name}</h1>
-                {isAdmin && (
-                  <span className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shrink-0">
-                    <Shield className="size-3" />
-                    Admin
-                  </span>
-                )}
+    <div className="min-h-dvh bg-canvas">
+      <main className="mx-auto w-full max-w-7xl px-5 pt-7 pb-28 sm:px-8 lg:pt-10">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-[13px] font-medium text-muted transition-colors hover:text-ink"
+          >
+            <ChevronLeft className="size-4" />
+            All rooms
+          </Link>
+
+          <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            {/* Identity */}
+            <div className="flex items-start gap-4">
+              <div className="flex size-14 items-center justify-center rounded-2xl border border-line bg-surface text-accent shadow-xs">
+                <Package className="size-7" />
               </div>
-              <div className="hidden sm:block mt-0.5">
-                <CopyCode code={room.join_code} />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {tab === 'inventory' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleExportCSV}
-                className="hidden sm:flex"
-              >
-                <Download className="size-3.5" />
-                Export CSV
-              </Button>
-            )}
-            <Button variant="ghost" size="icon-sm" onClick={handleSignOut} title="Sign out">
-              <LogOut className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Tab bar */}
-      <div className="sticky top-16 z-30 bg-background border-b border-border">
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="flex">
-            {(
-              [
-                ['inventory', 'Inventory', Package],
-                ['receipts', 'Receipts', ReceiptIcon],
-              ] as const
-            ).map(([t, label, Icon]) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-3.5 text-[15px] font-medium border-b-2 -mb-px transition-colors',
-                  tab === t
-                    ? 'text-primary border-primary'
-                    : 'text-muted-foreground border-transparent hover:text-foreground'
-                )}
-              >
-                <Icon className="size-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 sm:px-6 lg:px-12 py-10 flex flex-col gap-8">
-        {tab === 'inventory' ? (
-          <>
-            {/* KPI cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <KPICard
-                label="Total Items"
-                value={total}
-                icon={<Package />}
-                delay={0}
-              />
-              <KPICard
-                label="Arrived"
-                value={arrived}
-                subtitle={arrivedPct > 0 ? `${arrivedPct}% complete` : undefined}
-                icon={<CheckCircle />}
-                colorClass="text-success"
-                delay={80}
-              />
-              <KPICard
-                label="Pending"
-                value={pending}
-                icon={<Clock />}
-                delay={160}
-              />
-              <KPICard
-                label="Partial"
-                value={partial}
-                icon={<AlertTriangle />}
-                colorClass="text-warning"
-                delay={240}
-              />
-            </div>
-
-            {/* Section header */}
-            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Inventory</h2>
-                <p className="text-[15px] text-muted-foreground mt-0.5">
-                  {items.length} item{items.length !== 1 ? 's' : ''} tracked
-                </p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-[26px] font-semibold tracking-tight text-ink">{room.name}</h1>
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                      <Shield className="size-3" />
+                      Admin
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <CopyCode code={room.join_code} label="Code" />
+                  <span className="text-[13px] text-muted">
+                    {items.length} item{items.length !== 1 ? 's' : ''} · {receipts.length} receipt
+                    {receipts.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCSV}
-                className="sm:hidden"
-              >
-                <Download className="size-3.5" />
-                Export
-              </Button>
             </div>
 
-            <InventoryTable
-              items={items}
-              isAdmin={isAdmin}
-              onEdit={(item) => setEditItem(item)}
-              onDelete={(item) => setDeleteItem(item)}
-              onUpdateArrived={handleUpdateArrived}
-            />
-          </>
-        ) : (
-          <>
-            <ReceiptSummaryBar receipts={receipts} />
-            <ReceiptTable
-              receipts={receipts}
-              isAdmin={isAdmin}
-              onReimbursed={handleReimbursed}
-            />
-          </>
-        )}
+            <div className="flex items-center gap-2.5 self-start lg:self-auto">
+              {tab === 'inventory' && (
+                <Button variant="outline" onClick={handleExportCSV}>
+                  <Download className="size-4" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut}>
+                <LogOut className="size-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Tabs */}
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs
+            items={tabs}
+            value={tab}
+            onChange={(v) => setTab(v as Tab)}
+            className="w-full overflow-x-auto sm:w-auto"
+            layoutId={`room-tabs-${room.join_code}`}
+          />
+          <div className="hidden items-center gap-2 text-[13px] text-faint sm:flex">
+            <span className="size-1.5 rounded-full bg-success" />
+            Synced just now
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="mt-6">
+          {tab === 'inventory' ? (
+            <div className="flex flex-col gap-8">
+              <KpiGrid className="grid-cols-2 lg:grid-cols-4">
+                <KpiCard label="Total items" value={total} icon={Package} />
+                <KpiCard
+                  label="Arrived"
+                  value={arrived}
+                  icon={CheckCircle2}
+                  tone="success"
+                  hint={arrivedPct > 0 ? `${arrivedPct}% complete` : undefined}
+                />
+                <KpiCard label="Pending" value={pending} icon={Clock} />
+                <KpiCard label="Partial" value={partial} icon={AlertTriangle} tone="warning" />
+              </KpiGrid>
+
+              <InventoryTable
+                items={items}
+                isAdmin={isAdmin}
+                onEdit={(item) => setEditItem(item)}
+                onDelete={(item) => setDeleteItem(item)}
+                onUpdateArrived={handleUpdateArrived}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <ReceiptSummaryBar receipts={receipts} />
+              <ReceiptTable receipts={receipts} isAdmin={isAdmin} onReimbursed={handleReimbursed} />
+            </div>
+          )}
+        </div>
       </main>
 
-      {/* FABs */}
-      {tab === 'inventory' && (
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
-          aria-label="Add item"
-        >
-          <Plus className="size-5 text-white" />
-        </button>
-      )}
-
-      {tab === 'receipts' && (
-        <button
-          onClick={() => setShowReceiptModal(true)}
-          className="fixed bottom-6 right-6 rounded-full flex items-center gap-2 px-6 h-12 shadow-lg shadow-black/10 hover:scale-105 active:scale-95 transition-transform z-30 bg-primary"
-          aria-label="Submit receipt"
-        >
-          <Plus className="size-4 text-white" />
-          <span className="text-white text-[15px] font-semibold">Submit Receipt</span>
-        </button>
+      {/* FAB */}
+      {tab === 'inventory' ? (
+        <Fab icon={Plus} label="Add item" onClick={() => setShowAddModal(true)} />
+      ) : (
+        <Fab icon={ReceiptIcon} label="Submit receipt" onClick={() => setShowReceiptModal(true)} />
       )}
 
       {/* Modals */}
-      {(showAddModal || editItem) && (
-        <ItemModal
-          item={editItem}
-          onSave={handleSaveItem}
-          onClose={() => {
-            setEditItem(null);
-            setShowAddModal(false);
-          }}
-        />
-      )}
+      <ItemModal
+        open={showAddModal || !!editItem}
+        item={editItem}
+        onSave={handleSaveItem}
+        onClose={() => {
+          setEditItem(null);
+          setShowAddModal(false);
+        }}
+      />
 
-      {deleteItem && (
-        <DeleteDialog
-          itemName={deleteItem.name}
-          onConfirm={handleDeleteItem}
-          onCancel={() => setDeleteItem(null)}
-        />
-      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        itemName={deleteItem?.name ?? ''}
+        onConfirm={handleDeleteItem}
+        onCancel={() => setDeleteItem(null)}
+      />
 
       {showReceiptModal && room && (
         <SubmitReceiptModal

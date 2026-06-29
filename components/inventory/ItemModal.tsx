@@ -1,20 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import * as React from 'react';
+import { PackagePlus, Pencil } from 'lucide-react';
 import { InventoryItem, Category, CATEGORIES, deriveStatus, deriveTotalAmount } from '@/types/inventory';
-import { Input } from '@/components/ui/input';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Field, Input, Textarea } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 
 interface ItemModalProps {
+  open: boolean;
   item?: InventoryItem | null;
   onSave: (item: InventoryItem) => void;
   onClose: () => void;
@@ -36,6 +31,8 @@ const UNIT_SUGGESTIONS = [
   'notebook',
 ];
 
+const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: c }));
+
 const defaultForm = {
   name: '',
   category: 'Food & Grains' as Category,
@@ -47,23 +44,35 @@ const defaultForm = {
   notes: '',
 };
 
-export default function ItemModal({ item, onSave, onClose }: ItemModalProps) {
-  const [form, setForm] = useState(
-    item
-      ? {
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity,
-          unit: item.unit,
-          needed: item.needed,
-          arrived: item.arrived,
-          assignedTo: item.assignedTo ?? '',
-          notes: item.notes ?? '',
-        }
-      : defaultForm
-  );
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showSuggestions, setShowSuggestions] = useState(false);
+type Form = typeof defaultForm;
+
+export default function ItemModal({ open, item, onSave, onClose }: ItemModalProps) {
+  const [form, setForm] = React.useState<Form>(defaultForm);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+
+  // Re-seed the form whenever the modal opens (for add or for editing a specific item).
+  React.useEffect(() => {
+    if (!open) return;
+    queueMicrotask(() => {
+      setForm(
+        item
+          ? {
+              name: item.name,
+              category: item.category,
+              quantity: item.quantity,
+              unit: item.unit,
+              needed: item.needed,
+              arrived: item.arrived,
+              assignedTo: item.assignedTo ?? '',
+              notes: item.notes ?? '',
+            }
+          : defaultForm
+      );
+      setErrors({});
+      setShowSuggestions(false);
+    });
+  }, [open, item]);
 
   const preview = deriveTotalAmount(form.quantity, form.unit || 'unit');
 
@@ -108,236 +117,170 @@ export default function ItemModal({ item, onSave, onClose }: ItemModalProps) {
   );
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
+    <Modal open={open} onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <ModalHeader
+          title={item ? 'Edit item' : 'Add inventory item'}
+          description={
+            item ? 'Update the details for this item.' : 'Track something new and set its target.'
+          }
+          onClose={onClose}
+          icon={
+            item ? (
+              <Pencil className="size-5 text-accent" />
+            ) : (
+              <PackagePlus className="size-5 text-accent" />
+            )
+          }
         />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-          className="relative bg-popover border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl shadow-black/40"
-        >
-          {/* Header */}
-          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-popover border-b border-border rounded-t-xl">
-            <h2 className="text-base font-semibold text-foreground">
-              {item ? 'Edit Item' : 'Add Item'}
-            </h2>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
+
+        <ModalBody className="max-h-[60vh] space-y-4 overflow-y-auto pt-2">
+          {/* Name */}
+          <Field label="Item name" htmlFor="item-name">
+            <Input
+              id="item-name"
+              value={form.name}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, name: e.target.value }));
+                setErrors((er) => ({ ...er, name: '' }));
+              }}
+              placeholder="e.g. Basmati Rice"
+              aria-invalid={!!errors.name}
+              autoFocus
+            />
+            {errors.name && <p className="text-xs text-danger">{errors.name}</p>}
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Category">
+              <Select
+                value={form.category}
+                onChange={(v) => setForm((f) => ({ ...f, category: v as Category }))}
+                options={categoryOptions}
+                className="w-full"
+              />
+            </Field>
+            <Field label="Assigned to" htmlFor="item-assignee">
+              <Input
+                id="item-assignee"
+                value={form.assignedTo}
+                onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}
+                placeholder="Optional name"
+              />
+            </Field>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
-            {/* Preview */}
-            {form.unit && (
-              <div className="px-3 py-2 rounded-lg text-xs font-medium bg-accent text-accent-foreground">
-                Preview: {preview}
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Quantity" htmlFor="item-qty">
+              <Input
+                id="item-qty"
+                type="number"
+                min={1}
+                value={form.quantity}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) || 1;
+                  setForm((f) => ({ ...f, quantity: v, needed: v }));
+                  setErrors((er) => ({ ...er, quantity: '', needed: '' }));
+                }}
+                aria-invalid={!!errors.quantity}
+              />
+              {errors.quantity && <p className="text-xs text-danger">{errors.quantity}</p>}
+            </Field>
 
-            {/* ── Identity ── */}
-            <div className="flex flex-col gap-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Name <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => {
-                    setForm((f) => ({ ...f, name: e.target.value }));
-                    setErrors((er) => ({ ...er, name: '' }));
-                  }}
-                  placeholder="e.g. Basmati Rice"
-                  aria-invalid={!!errors.name}
-                  autoFocus
-                />
-                {errors.name && (
-                  <p className="text-xs mt-1 text-destructive">{errors.name}</p>
-                )}
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Category
-                </label>
-                <Select
-                  value={form.category}
-                  onValueChange={(v) => setForm((f) => ({ ...f, category: v as Category }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="border-t border-border" />
-
-            {/* ── Quantity ── */}
-            <div className="flex flex-col gap-4">
-              {/* Quantity + Unit */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Quantity <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.quantity}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value) || 1;
-                      setForm((f) => ({ ...f, quantity: v, needed: v }));
-                      setErrors((er) => ({ ...er, quantity: '', needed: '' }));
-                    }}
-                    aria-invalid={!!errors.quantity}
-                  />
-                  {errors.quantity && (
-                    <p className="text-xs mt-1 text-destructive">{errors.quantity}</p>
-                  )}
+            <Field label="Unit" htmlFor="item-unit" className="relative">
+              <Input
+                id="item-unit"
+                value={form.unit}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, unit: e.target.value }));
+                  setShowSuggestions(true);
+                  setErrors((er) => ({ ...er, unit: '' }));
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="e.g. 20 lb bag"
+                aria-invalid={!!errors.unit}
+              />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full right-0 left-0 z-10 mt-1.5 overflow-hidden rounded-xl border border-line bg-elevated p-1 shadow-pop">
+                  {filteredSuggestions.slice(0, 5).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className="w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] text-ink-soft transition-colors hover:bg-subtle"
+                      onMouseDown={() => {
+                        setForm((f) => ({ ...f, unit: s }));
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
+              )}
+              {errors.unit && <p className="text-xs text-danger">{errors.unit}</p>}
+            </Field>
+          </div>
 
-                <div className="relative">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Unit <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    type="text"
-                    value={form.unit}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, unit: e.target.value }));
-                      setShowSuggestions(true);
-                      setErrors((er) => ({ ...er, unit: '' }));
-                    }}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                    placeholder="e.g. 20 lb bag"
-                    aria-invalid={!!errors.unit}
-                  />
-                  {showSuggestions && filteredSuggestions.length > 0 && (
-                    <div className="absolute z-10 top-full mt-1 left-0 right-0 bg-popover border border-border rounded-lg overflow-hidden shadow-lg">
-                      {filteredSuggestions.slice(0, 5).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                          onMouseDown={() => {
-                            setForm((f) => ({ ...f, unit: s }));
-                            setShowSuggestions(false);
-                          }}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {errors.unit && (
-                    <p className="text-xs mt-1 text-destructive">{errors.unit}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Needed + Arrived */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Needed
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.needed}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, needed: parseInt(e.target.value) || 1 }));
-                      setErrors((er) => ({ ...er, needed: '' }));
-                    }}
-                    aria-invalid={!!errors.needed}
-                  />
-                  {errors.needed && (
-                    <p className="text-xs mt-1 text-destructive">{errors.needed}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Arrived So Far
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={form.needed}
-                    value={form.arrived}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, arrived: parseInt(e.target.value) || 0 }));
-                      setErrors((er) => ({ ...er, arrived: '' }));
-                    }}
-                    aria-invalid={!!errors.arrived}
-                  />
-                  {errors.arrived && (
-                    <p className="text-xs mt-1 text-destructive">{errors.arrived}</p>
-                  )}
-                </div>
-              </div>
+          {/* Preview */}
+          {form.unit && (
+            <div className="inline-flex items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 py-1.5 text-[13px] font-medium text-accent">
+              Preview: {preview}
             </div>
+          )}
 
-            <div className="border-t border-border" />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Needed" htmlFor="item-needed">
+              <Input
+                id="item-needed"
+                type="number"
+                min={1}
+                value={form.needed}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, needed: parseInt(e.target.value) || 1 }));
+                  setErrors((er) => ({ ...er, needed: '' }));
+                }}
+                aria-invalid={!!errors.needed}
+              />
+              {errors.needed && <p className="text-xs text-danger">{errors.needed}</p>}
+            </Field>
 
-            {/* ── Meta ── */}
-            <div className="flex flex-col gap-4">
-              {/* Assigned To */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Assigned To
-                </label>
-                <Input
-                  type="text"
-                  value={form.assignedTo}
-                  onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}
-                  placeholder="Optional name"
-                />
-              </div>
+            <Field label="Arrived so far" htmlFor="item-arrived">
+              <Input
+                id="item-arrived"
+                type="number"
+                min={0}
+                max={form.needed}
+                value={form.arrived}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, arrived: parseInt(e.target.value) || 0 }));
+                  setErrors((er) => ({ ...er, arrived: '' }));
+                }}
+                aria-invalid={!!errors.arrived}
+              />
+              {errors.arrived && <p className="text-xs text-danger">{errors.arrived}</p>}
+            </Field>
+          </div>
 
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Notes</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Optional notes…"
-                  rows={2}
-                  className="textarea-field"
-                />
-              </div>
-            </div>
+          <Field label="Notes" htmlFor="item-notes">
+            <Textarea
+              id="item-notes"
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Optional notes…"
+              rows={2}
+            />
+          </Field>
+        </ModalBody>
 
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" className="flex-1">
-                {item ? 'Save Changes' : 'Add Item'}
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+        <ModalFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={!form.name.trim()}>
+            {item ? 'Save changes' : 'Add item'}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

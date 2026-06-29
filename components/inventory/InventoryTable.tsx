@@ -1,22 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Trash2, Search, Package, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Minus, Plus, Pencil, Trash2, PackageOpen, SearchX, Package } from 'lucide-react';
 import { InventoryItem, Category, Status, CATEGORIES } from '@/types/inventory';
-import { Input } from '@/components/ui/input';
+import { SearchBar } from '@/components/ui/search-bar';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import StatusBadge from './StatusBadge';
-import InlineStepper from './InlineStepper';
+import { StatusPill } from '@/components/ui/status-pill';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Table, THead, TR, TD, TH, SortHeader, type SortDir } from '@/components/ui/table';
+import { relativeTime, clamp } from '@/lib/utils';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -26,49 +21,30 @@ interface InventoryTableProps {
   onUpdateArrived: (id: string, arrived: number) => void;
 }
 
-type SortField = 'name' | 'status' | 'progress';
-type SortDir = 'asc' | 'desc';
+type SortKey = 'name' | 'progress' | 'status' | 'updated';
+const statusRank: Record<Status, number> = { pending: 0, partial: 1, arrived: 2 };
 
-const statusOrder: Record<Status, number> = { pending: 0, partial: 1, arrived: 2 };
+const categoryOptions = [
+  { value: 'All', label: 'All categories' },
+  ...CATEGORIES.map((c) => ({ value: c, label: c })),
+];
+const statusOptions = [
+  { value: 'All', label: 'All status' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'arrived', label: 'Arrived' },
+];
+const sortOptions = [
+  { value: 'status', label: 'Urgency' },
+  { value: 'name', label: 'Name' },
+  { value: 'progress', label: 'Progress' },
+  { value: 'updated', label: 'Last updated' },
+];
 
-function progressBarClass(status: Status) {
-  if (status === 'arrived') return '[&_[data-slot=progress-indicator]]:bg-success';
-  if (status === 'partial') return '[&_[data-slot=progress-indicator]]:bg-warning';
-  return '[&_[data-slot=progress-indicator]]:bg-muted-foreground/40';
-}
-
-function SortButton({
-  label,
-  field,
-  sort,
-  onSort,
-}: {
-  label: string;
-  field: SortField;
-  sort: { field: SortField; dir: SortDir } | null;
-  onSort: (f: SortField) => void;
-}) {
-  const active = sort?.field === field;
-  return (
-    <button
-      onClick={() => onSort(field)}
-      className={cn(
-        'flex items-center gap-1 text-xs font-medium tracking-wide uppercase transition-colors select-none',
-        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'
-      )}
-    >
-      {label}
-      {active ? (
-        sort?.dir === 'asc' ? (
-          <ChevronUp className="size-3" />
-        ) : (
-          <ChevronDown className="size-3" />
-        )
-      ) : (
-        <ChevronsUpDown className="size-3 opacity-30" />
-      )}
-    </button>
-  );
+function progressTone(status: Status) {
+  if (status === 'arrived') return 'success' as const;
+  if (status === 'partial') return 'warning' as const;
+  return 'neutral' as const;
 }
 
 export default function InventoryTable({
@@ -78,270 +54,235 @@ export default function InventoryTable({
   onDelete,
   onUpdateArrived,
 }: InventoryTableProps) {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<Category | 'All'>('All');
-  const [statusFilter, setStatusFilter] = useState<Status | 'All'>('All');
-  const [sort, setSort] = useState<{ field: SortField; dir: SortDir } | null>(null);
+  const [query, setQuery] = React.useState('');
+  const [category, setCategory] = React.useState<Category | 'All'>('All');
+  const [status, setStatus] = React.useState<Status | 'All'>('All');
+  const [sortKey, setSortKey] = React.useState<SortKey>('status');
+  const [sortDir, setSortDir] = React.useState<SortDir>('asc');
 
-  function handleSort(field: SortField) {
-    setSort((prev) =>
-      !prev || prev.field !== field
-        ? { field, dir: 'asc' }
-        : prev.dir === 'asc'
-        ? { field, dir: 'desc' }
-        : null
-    );
+  const filtered = React.useMemo(() => {
+    const result = items.filter((item) => {
+      const matchesQuery =
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        (item.assignedTo ?? '').toLowerCase().includes(query.toLowerCase());
+      const matchesCategory = category === 'All' || item.category === category;
+      const matchesStatus = status === 'All' || item.status === status;
+      return matchesQuery && matchesCategory && matchesStatus;
+    });
+
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortKey === 'progress') {
+        const pa = a.needed > 0 ? a.arrived / a.needed : 0;
+        const pb = b.needed > 0 ? b.arrived / b.needed : 0;
+        cmp = pa - pb;
+      } else if (sortKey === 'status') cmp = statusRank[a.status] - statusRank[b.status];
+      else cmp = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return result;
+  }, [items, query, category, status, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
   }
 
-  const filtered = items.filter((item) => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat = categoryFilter === 'All' || item.category === categoryFilter;
-    const matchStatus = statusFilter === 'All' || item.status === statusFilter;
-    return matchSearch && matchCat && matchStatus;
-  });
-
-  const sorted = sort
-    ? [...filtered].sort((a, b) => {
-        let cmp = 0;
-        if (sort.field === 'name') cmp = a.name.localeCompare(b.name);
-        else if (sort.field === 'status')
-          cmp = statusOrder[a.status] - statusOrder[b.status];
-        else if (sort.field === 'progress') {
-          const pa = a.needed > 0 ? a.arrived / a.needed : 0;
-          const pb = b.needed > 0 ? b.arrived / b.needed : 0;
-          cmp = pa - pb;
-        }
-        return sort.dir === 'asc' ? cmp : -cmp;
-      })
-    : filtered;
-
-  const isFiltered = !!search || categoryFilter !== 'All' || statusFilter !== 'All';
+  const hasItems = items.length > 0;
+  const filtersActive = query !== '' || category !== 'All' || status !== 'All';
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search items…"
-            className="pl-9"
+    <div className="rounded-2xl border border-line bg-elevated shadow-card">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 border-b border-line p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Search items or assignee..."
+          className="sm:w-64"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={category} onChange={(v) => setCategory(v as Category | 'All')} options={categoryOptions} />
+          <Select value={status} onChange={(v) => setStatus(v as Status | 'All')} options={statusOptions} />
+          <span className="hidden h-5 w-px bg-line sm:block" />
+          <Select
+            value={sortKey}
+            onChange={(v) => setSortKey(v as SortKey)}
+            options={sortOptions}
+            label="Sort:"
+            align="right"
           />
         </div>
-        <Select
-          value={categoryFilter}
-          onValueChange={(v) => setCategoryFilter(v as Category | 'All')}
-        >
-          <SelectTrigger className="w-full sm:w-[170px]">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All categories</SelectItem>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as Status | 'All')}
-        >
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
-            <SelectItem value="arrived">Arrived</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {sorted.length === 0 ? (
-        <EmptyState isFiltered={isFiltered} />
+      {!hasItems ? (
+        <EmptyState
+          icon={PackageOpen}
+          title="No inventory items yet"
+          description="Start tracking what this camp needs. Use the + button to add the first item and watch arrivals come in."
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={SearchX}
+          title="No matching items"
+          description="No items match your current search and filters."
+          action={
+            <Button
+              variant="outline"
+              onClick={() => {
+                setQuery('');
+                setCategory('All');
+                setStatus('All');
+              }}
+            >
+              Reset filters
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left">
-                    <SortButton label="Item" field="name" sort={sort} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left">
-                    <SortButton label="Progress" field="progress" sort={sort} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-left">
-                    <SortButton label="Status" field="status" sort={sort} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground tracking-wide uppercase">
-                    Assigned
-                  </th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
+          <div className="hidden md:block">
+            <Table>
+              <THead>
+                <TR className="hover:bg-transparent">
+                  <SortHeader label="Item" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
+                  <TH>Amount</TH>
+                  <SortHeader label="Progress" active={sortKey === 'progress'} dir={sortDir} onClick={() => toggleSort('progress')} className="w-[26%]" />
+                  <SortHeader label="Status" active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} />
+                  <TH>Assigned</TH>
+                  <SortHeader label="Updated" active={sortKey === 'updated'} dir={sortDir} onClick={() => toggleSort('updated')} />
+                  <TH className="text-right">Arrived</TH>
+                </TR>
+              </THead>
               <tbody>
-                <AnimatePresence mode="popLayout">
-                  {sorted.map((item, i) => (
-                    <motion.tr
-                      key={item.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ delay: i * 0.015 }}
-                      className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      {/* Item: name + category */}
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-foreground leading-tight">{item.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.category}</p>
-                      </td>
-
-                      {/* Amount (qty × unit) */}
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {item.totalAmount}
-                      </td>
-
-                      {/* Progress: stepper + X / Y + thin bar */}
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <InlineStepper
-                              value={item.arrived}
-                              max={item.needed}
-                              onChange={(v) => onUpdateArrived(item.id, v)}
-                            />
-                            <span className="text-xs text-muted-foreground tabular-nums">
-                              / {item.needed}
-                            </span>
-                          </div>
-                          <Progress
-                            value={item.needed > 0 ? (item.arrived / item.needed) * 100 : 0}
-                            className={cn('h-0.5 w-20', progressBarClass(item.status))}
-                          />
+                {filtered.map((item) => {
+                  const pct = clamp(item.needed > 0 ? (item.arrived / item.needed) * 100 : 0, 0, 100);
+                  return (
+                    <TR key={item.id} className="group">
+                      <TD>
+                        <div className="font-medium text-ink">{item.name}</div>
+                        <div className="text-xs text-faint">{item.category}</div>
+                      </TD>
+                      <TD className="text-[13px] text-muted whitespace-nowrap">{item.totalAmount}</TD>
+                      <TD>
+                        <div className="flex items-center gap-3">
+                          <span className="w-12 shrink-0 text-[13px] tabular text-ink-soft">
+                            {item.arrived}
+                            <span className="text-faint"> / {item.needed}</span>
+                          </span>
+                          <Progress value={pct} tone={progressTone(item.status)} className="max-w-32" />
                         </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3">
-                        <StatusBadge status={item.status} />
-                      </td>
-
-                      {/* Assigned */}
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {item.assignedTo ?? '—'}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
+                      </TD>
+                      <TD>
+                        <StatusPill status={item.status} />
+                      </TD>
+                      <TD className="text-[13px] text-muted">{item.assignedTo ?? '—'}</TD>
+                      <TD>
+                        <span className="text-xs text-faint">{relativeTime(item.updatedAt)}</span>
+                      </TD>
+                      <TD>
+                        <div className="flex items-center justify-end gap-1">
+                          <ArrivedStepper
+                            value={item.arrived}
+                            max={item.needed}
+                            onDec={() => onUpdateArrived(item.id, Math.max(0, item.arrived - 1))}
+                            onInc={() => onUpdateArrived(item.id, Math.min(item.needed, item.arrived + 1))}
+                          />
+                          <button
                             onClick={() => onEdit(item)}
-                            aria-label="Edit"
+                            aria-label={`Edit ${item.name}`}
+                            className="ml-1 flex size-7 items-center justify-center rounded-md text-faint transition-all hover:bg-subtle hover:text-ink"
                           >
-                            <Pencil className="size-3.5 text-primary" />
-                          </Button>
+                            <Pencil className="size-3.5" />
+                          </button>
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
+                            <button
                               onClick={() => onDelete(item)}
-                              aria-label="Delete"
+                              aria-label={`Delete ${item.name}`}
+                              className="flex size-7 items-center justify-center rounded-md text-faint opacity-0 transition-all hover:bg-danger-soft hover:text-danger group-hover:opacity-100"
                             >
-                              <Trash2 className="size-3.5 text-destructive" />
-                            </Button>
+                              <Trash2 className="size-3.5" />
+                            </button>
                           )}
                         </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
+                      </TD>
+                    </TR>
+                  );
+                })}
               </tbody>
-            </table>
+            </Table>
           </div>
 
           {/* Mobile cards */}
-          <div className="md:hidden flex flex-col gap-2">
-            <AnimatePresence mode="popLayout">
-              {sorted.map((item, i) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: i * 0.025 }}
-                  className="bg-card border border-border rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm text-foreground leading-tight">
-                        {item.name}
-                      </p>
-                      <p className="text-xs mt-0.5 text-muted-foreground">{item.category}</p>
-                    </div>
-                    <StatusBadge status={item.status} />
-                  </div>
-
-                  <p className="text-xs mb-3 text-muted-foreground">{item.totalAmount}</p>
-
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Arrived</span>
-                        <InlineStepper
-                          value={item.arrived}
-                          max={item.needed}
-                          onChange={(v) => onUpdateArrived(item.id, v)}
-                        />
-                        <span className="text-xs text-muted-foreground">/ {item.needed}</span>
+          <div className="divide-y divide-line md:hidden">
+            <AnimatePresence initial={false}>
+              {filtered.map((item) => {
+                const pct = clamp(item.needed > 0 ? (item.arrived / item.needed) * 100 : 0, 0, 100);
+                return (
+                  <motion.div key={item.id} layout exit={{ opacity: 0, height: 0 }} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium text-ink">{item.name}</span>
+                          <StatusPill status={item.status} />
+                        </div>
+                        <div className="mt-0.5 text-xs text-faint">
+                          {item.category} · {item.totalAmount}
+                        </div>
                       </div>
                       <div className="flex items-center gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
+                        <button
                           onClick={() => onEdit(item)}
                           aria-label="Edit"
+                          className="flex size-7 items-center justify-center rounded-md text-faint hover:bg-subtle hover:text-ink"
                         >
-                          <Pencil className="size-3.5 text-primary" />
-                        </Button>
+                          <Pencil className="size-3.5" />
+                        </button>
                         {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
+                          <button
                             onClick={() => onDelete(item)}
                             aria-label="Delete"
+                            className="flex size-7 items-center justify-center rounded-md text-faint hover:bg-danger-soft hover:text-danger"
                           >
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
+                            <Trash2 className="size-3.5" />
+                          </button>
                         )}
                       </div>
                     </div>
-                    <Progress
-                      value={item.needed > 0 ? (item.arrived / item.needed) * 100 : 0}
-                      className={cn('h-0.5', progressBarClass(item.status))}
-                    />
-                  </div>
-
-                  {item.assignedTo && (
-                    <p className="text-xs mt-2.5 text-muted-foreground">
-                      Assigned: {item.assignedTo}
-                    </p>
-                  )}
-                </motion.div>
-              ))}
+                    <div className="mt-3 flex items-center gap-3">
+                      <ArrivedStepper
+                        value={item.arrived}
+                        max={item.needed}
+                        onDec={() => onUpdateArrived(item.id, Math.max(0, item.arrived - 1))}
+                        onInc={() => onUpdateArrived(item.id, Math.min(item.needed, item.arrived + 1))}
+                      />
+                      <Progress value={pct} tone={progressTone(item.status)} />
+                      <span className="shrink-0 text-[12px] tabular text-muted">
+                        {item.arrived}
+                        <span className="text-faint"> / {item.needed}</span>
+                      </span>
+                    </div>
+                    {item.assignedTo && (
+                      <p className="mt-2.5 text-xs text-faint">Assigned: {item.assignedTo}</p>
+                    )}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
+          </div>
+
+          {/* Footer summary */}
+          <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-xs text-faint">
+            <span className="inline-flex items-center gap-1.5">
+              <Package className="size-3.5" />
+              Showing {filtered.length} of {items.length} {items.length === 1 ? 'item' : 'items'}
+            </span>
+            {filtersActive && <span className="text-muted">Filters applied</span>}
           </div>
         </>
       )}
@@ -349,29 +290,38 @@ export default function InventoryTable({
   );
 }
 
-function EmptyState({ isFiltered }: { isFiltered: boolean }) {
+function ArrivedStepper({
+  value,
+  max,
+  onDec,
+  onInc,
+}: {
+  value: number;
+  max: number;
+  onDec: () => void;
+  onInc: () => void;
+}) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-20 text-center gap-2"
-    >
-      <Package className="size-8 text-muted-foreground/30 mb-1" />
-      {isFiltered ? (
-        <>
-          <p className="text-sm font-medium text-foreground">No items match your filters</p>
-          <p className="text-xs text-muted-foreground/60">
-            Try adjusting the search or category filter
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="text-sm font-medium text-foreground">No inventory items yet</p>
-          <p className="text-xs text-muted-foreground/60">
-            Use the + button to add the first item
-          </p>
-        </>
-      )}
-    </motion.div>
+    <div className="inline-flex items-center rounded-lg border border-line-strong bg-elevated shadow-xs">
+      <button
+        onClick={onDec}
+        disabled={value <= 0}
+        aria-label="Decrease arrived"
+        className="flex size-7 items-center justify-center rounded-l-lg text-muted transition-colors hover:bg-subtle hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+      >
+        <Minus className="size-3.5" />
+      </button>
+      <span className="flex w-8 items-center justify-center border-x border-line text-[13px] font-medium tabular text-ink">
+        {value}
+      </span>
+      <button
+        onClick={onInc}
+        disabled={value >= max}
+        aria-label="Increase arrived"
+        className="flex size-7 items-center justify-center rounded-r-lg text-muted transition-colors hover:bg-subtle hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+      >
+        <Plus className="size-3.5" />
+      </button>
+    </div>
   );
 }

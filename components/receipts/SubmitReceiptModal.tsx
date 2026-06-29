@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Camera, Plus, Trash2, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, Camera, Check, Plus, ScanLine, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { submitReceipt, uploadReceiptImage } from '@/lib/supabase/receipts';
 import { syncReceiptItemsToInventory } from '@/lib/supabase/receipt-inventory-sync';
 import { GeminiReceiptResult, Receipt } from '@/types';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '@/components/ui/modal';
+import { Field, Input, Textarea } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Stepper } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
 
 interface SubmitReceiptModalProps {
@@ -84,9 +86,15 @@ export default function SubmitReceiptModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!yourName.trim()) { toast.error('Your name is required'); return; }
+    if (!yourName.trim()) {
+      toast.error('Your name is required');
+      return;
+    }
     const totalNum = parseFloat(total);
-    if (!totalNum || totalNum <= 0) { toast.error('Total must be greater than 0'); return; }
+    if (!totalNum || totalNum <= 0) {
+      toast.error('Total must be greater than 0');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -144,276 +152,256 @@ export default function SubmitReceiptModal({
   }
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
+    <Modal open onClose={onClose} size="lg">
+      <form onSubmit={handleSubmit}>
+        <ModalHeader
+          title="Submit receipt"
+          description={
+            step === 'upload'
+              ? 'Upload a photo and let AI extract the details.'
+              : 'Confirm the parsed details before saving.'
+          }
+          onClose={onClose}
+          icon={<ScanLine className="size-5 text-accent" />}
         />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-          className="relative bg-popover border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl shadow-black/40"
-        >
-          {/* Header */}
-          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-popover border-b border-border rounded-t-xl">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Submit Receipt</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {step === 'upload' ? 'Step 1 of 2 — Upload image' : 'Step 2 of 2 — Review & confirm'}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
-          </div>
 
-          {/* Step indicator */}
-          <div className="flex gap-1 px-6 pt-4">
-            {(['upload', 'review'] as Step[]).map((s, i) => (
-              <div
-                key={s}
-                className={cn(
-                  'h-0.5 flex-1 rounded-full transition-colors',
-                  step === s || (step === 'review' && i === 0) ? 'bg-primary' : 'bg-border'
-                )}
-              />
-            ))}
-          </div>
+        <ModalBody className="max-h-[62vh] overflow-y-auto pt-2">
+          <Stepper steps={['Upload', 'Review']} current={step === 'upload' ? 0 : 1} className="mb-5" />
 
-          {step === 'upload' ? (
-            <div className="p-6 flex flex-col gap-4">
-              {/* Drop zone */}
-              <div
-                className={cn(
-                  'relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 cursor-pointer transition-colors',
-                  dragging
-                    ? 'border-primary bg-accent'
-                    : 'border-border hover:border-primary/40 hover:bg-muted/30'
-                )}
-                onClick={() => fileRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
-                onDrop={handleDrop}
+          <AnimatePresence mode="wait">
+            {step === 'upload' ? (
+              <motion.div
+                key="upload"
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-4"
               >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                {preview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={preview} alt="Receipt preview" className="max-h-48 rounded-lg object-contain" />
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-accent">
-                      <Camera className="size-6 text-primary" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground">
-                      {dragging ? 'Drop to upload' : 'Take a photo or upload receipt'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {dragging ? '' : 'Tap, drag & drop, or choose a file'}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {file && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted">
-                  <Upload className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }}
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </div>
-              )}
-
-              <Button onClick={handleScan} disabled={!file || scanning} className="w-full">
-                {scanning ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Scanning…
-                  </>
-                ) : (
-                  'Scan Receipt with AI'
-                )}
-              </Button>
-
-              <button
-                onClick={() => setStep('review')}
-                className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Skip — enter details manually
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-              {preview && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={preview}
-                  alt="Receipt"
-                  className="w-full max-h-32 object-contain rounded-xl bg-muted"
-                />
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Vendor
-                  </label>
-                  <Input
-                    type="text"
-                    value={vendor}
-                    onChange={(e) => setVendor(e.target.value)}
-                    placeholder="e.g. Costco"
+                {/* Drop zone */}
+                <div
+                  className={cn(
+                    'relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed py-12 transition-colors',
+                    dragging
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-line-strong bg-surface hover:border-accent/40 hover:bg-subtle'
+                  )}
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+                  }}
+                  onDrop={handleDrop}
+                >
+                  {!preview && <div className="absolute inset-0 bg-grid opacity-40 mask-fade-b" />}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleFileChange}
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="[color-scheme:dark]"
-                  />
-                </div>
-              </div>
-
-              {/* Line items */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-muted-foreground">Items</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => setLineItems((li) => [...li, { name: '', quantity: '1' }])}
-                    className="text-primary hover:text-primary"
-                  >
-                    <Plus className="size-3" />
-                    Add item
-                  </Button>
-                </div>
-                {lineItems.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="grid gap-2 px-1" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
-                      <span className="text-xs text-muted-foreground/60">Name</span>
-                      <span className="text-xs text-muted-foreground/60">Qty</span>
-                      <span />
-                    </div>
-                    {lineItems.map((item, idx) => (
-                      <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
-                        <Input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => {
-                            const li = [...lineItems];
-                            li[idx].name = e.target.value;
-                            setLineItems(li);
-                          }}
-                          placeholder="Item name"
-                        />
-                        <Input
-                          type="text"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const li = [...lineItems];
-                            li[idx].quantity = e.target.value;
-                            setLineItems(li);
-                          }}
-                          placeholder="1"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setLineItems((li) => li.filter((_, i) => i !== idx))}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                  {preview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={preview} alt="Receipt preview" className="max-h-48 rounded-lg object-contain" />
+                  ) : (
+                    <div className="relative flex flex-col items-center text-center">
+                      <div className="flex size-16 items-center justify-center rounded-2xl border border-line bg-elevated shadow-card">
+                        <Camera className="size-7 text-accent" />
                       </div>
-                    ))}
+                      <p className="mt-5 text-sm font-medium text-ink">
+                        {dragging ? 'Drop to upload' : 'Take a photo or upload a receipt'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">Tap, drag &amp; drop, or choose a file</p>
+                    </div>
+                  )}
+                </div>
+
+                {file && (
+                  <div className="flex items-center gap-2 rounded-lg border border-line bg-subtle px-3 py-2">
+                    <Upload className="size-4 shrink-0 text-muted" />
+                    <span className="flex-1 truncate text-sm text-ink">{file.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                        setPreview(null);
+                      }}
+                    >
+                      <X className="size-3.5" />
+                    </Button>
                   </div>
                 )}
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Total <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={total}
-                  onChange={(e) => setTotal(e.target.value)}
-                  placeholder="0.00"
-                  className="border-primary/30 focus-visible:border-primary"
-                />
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setStep('review')}
+                  className="block w-full text-center text-xs text-muted transition-colors hover:text-ink"
+                >
+                  Skip — enter details manually
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="review"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-4"
+              >
+                {preview && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={preview}
+                    alt="Receipt"
+                    className="max-h-32 w-full rounded-xl border border-line bg-subtle object-contain"
+                  />
+                )}
 
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Your Name <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  type="text"
-                  value={yourName}
-                  onChange={(e) => setYourName(e.target.value)}
-                  placeholder="e.g. Pranav B."
-                  required
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Vendor" htmlFor="receipt-vendor">
+                    <Input
+                      id="receipt-vendor"
+                      value={vendor}
+                      onChange={(e) => setVendor(e.target.value)}
+                      placeholder="e.g. Costco"
+                    />
+                  </Field>
+                  <Field label="Date" htmlFor="receipt-date">
+                    <Input
+                      id="receipt-date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  </Field>
+                </div>
 
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Optional notes…"
-                  className="textarea-field"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setStep('upload')}>
-                  Back
-                </Button>
-                <Button type="submit" disabled={submitting} className="flex-1">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Submitting…
-                    </>
-                  ) : (
-                    'Submit Receipt'
+                {/* Line items */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-ink-soft">Items</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setLineItems((li) => [...li, { name: '', quantity: '1' }])}
+                      className="text-accent hover:text-accent-hover"
+                    >
+                      <Plus className="size-3" />
+                      Add item
+                    </Button>
+                  </div>
+                  {lineItems.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="grid gap-2 px-1" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
+                        <span className="text-xs text-faint">Name</span>
+                        <span className="text-xs text-faint">Qty</span>
+                        <span />
+                      </div>
+                      {lineItems.map((item, idx) => (
+                        <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 72px 28px' }}>
+                          <Input
+                            value={item.name}
+                            onChange={(e) => {
+                              const li = [...lineItems];
+                              li[idx].name = e.target.value;
+                              setLineItems(li);
+                            }}
+                            placeholder="Item name"
+                          />
+                          <Input
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const li = [...lineItems];
+                              li[idx].quantity = e.target.value;
+                              setLineItems(li);
+                            }}
+                            placeholder="1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setLineItems((li) => li.filter((_, i) => i !== idx))}
+                            className="text-danger hover:bg-danger-soft hover:text-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </Button>
-              </div>
-            </form>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Total *" htmlFor="receipt-total">
+                    <Input
+                      id="receipt-total"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={total}
+                      onChange={(e) => setTotal(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </Field>
+                  <Field label="Your name *" htmlFor="receipt-name">
+                    <Input
+                      id="receipt-name"
+                      value={yourName}
+                      onChange={(e) => setYourName(e.target.value)}
+                      placeholder="e.g. Pranav B."
+                      required
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Notes" htmlFor="receipt-notes">
+                  <Textarea
+                    id="receipt-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Optional notes…"
+                  />
+                </Field>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </ModalBody>
+
+        <ModalFooter>
+          {step === 'review' && (
+            <Button type="button" variant="outline" onClick={() => setStep('upload')} className="mr-auto">
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
           )}
-        </motion.div>
-      </div>
-    </AnimatePresence>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          {step === 'upload' ? (
+            <Button type="button" onClick={handleScan} disabled={!file} loading={scanning}>
+              {!scanning && <Sparkles className="size-4" />}
+              {scanning ? 'Scanning…' : 'Scan with AI'}
+            </Button>
+          ) : (
+            <Button type="submit" loading={submitting}>
+              <Check className="size-4" />
+              Submit receipt
+            </Button>
+          )}
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

@@ -1,94 +1,117 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
-import { joinRoom } from '@/lib/supabase/rooms';
-import { toast } from 'sonner';
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
+import { LogIn } from 'lucide-react';
+import { toast } from 'sonner';
+import { joinRoom } from '@/lib/supabase/rooms';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+const LEN = 6;
 
 interface JoinRoomModalProps {
+  open: boolean;
   onClose: () => void;
 }
 
-export default function JoinRoomModal({ onClose }: JoinRoomModalProps) {
+export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
   const router = useRouter();
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [chars, setChars] = React.useState<string[]>(Array(LEN).fill(''));
+  const [loading, setLoading] = React.useState(false);
+  const refs = React.useRef<(HTMLInputElement | null)[]>([]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (code.trim().length !== 6) { toast.error('Code must be 6 characters'); return; }
+  React.useEffect(() => {
+    if (open) {
+      queueMicrotask(() => {
+        setChars(Array(LEN).fill(''));
+        setLoading(false);
+      });
+      setTimeout(() => refs.current[0]?.focus(), 50);
+    }
+  }, [open]);
+
+  const code = chars.join('');
+  const complete = code.length === LEN;
+
+  function setAt(i: number, value: string) {
+    const v = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!v) {
+      setChars((prev) => prev.map((c, idx) => (idx === i ? '' : c)));
+      return;
+    }
+    if (v.length > 1) {
+      const next = v.slice(0, LEN).split('');
+      setChars(Array.from({ length: LEN }, (_, idx) => next[idx] ?? ''));
+      refs.current[Math.min(v.length, LEN - 1)]?.focus();
+      return;
+    }
+    setChars((prev) => prev.map((c, idx) => (idx === i ? v : c)));
+    if (i < LEN - 1) refs.current[i + 1]?.focus();
+  }
+
+  function onKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !chars[i] && i > 0) refs.current[i - 1]?.focus();
+  }
+
+  async function handleJoin() {
+    if (!complete) return;
     setLoading(true);
     try {
-      const room = await joinRoom(code.trim());
+      const room = await joinRoom(code);
       toast.success(`Joined "${room.name}"!`);
       router.push(`/room/${room.join_code}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to join room');
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-          className="relative bg-popover border border-border rounded-xl w-full max-w-md shadow-xl shadow-black/40"
+    <Modal open={open} onClose={onClose} size="sm">
+      <ModalHeader
+        title="Join a room"
+        description="Enter the 6-character invite code you were given."
+        onClose={onClose}
+        icon={<LogIn className="size-5 text-accent" />}
+      />
+      <ModalBody className="pt-2 pb-4">
+        <div
+          className="flex justify-center gap-2 py-2"
+          onPaste={(e) => setAt(0, e.clipboardData.getData('text'))}
         >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-base font-semibold text-foreground">Join Room</h2>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Join Code
-              </label>
-              <Input
-                type="text"
-                value={code}
-                onChange={(e) =>
-                  setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
-                }
-                placeholder="AX7K2P"
-                required
-                autoFocus
-                maxLength={6}
-                className="font-mono text-center text-xl tracking-[0.25em] h-12"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Ask the room admin for the 6-character code.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading || code.length !== 6} className="flex-1">
-                {loading ? 'Joining…' : 'Join Room'}
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+          {chars.map((c, i) => (
+            <input
+              key={i}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              value={c}
+              onChange={(e) => setAt(i, e.target.value)}
+              onKeyDown={(e) => onKeyDown(i, e)}
+              inputMode="text"
+              maxLength={1}
+              className={cn(
+                'size-12 rounded-xl border bg-elevated text-center font-mono text-lg font-semibold tracking-tight text-ink uppercase shadow-xs transition-all outline-none',
+                c ? 'border-accent/50' : 'border-line-strong',
+                'focus:border-accent/70 focus:ring-[3px] focus:ring-accent/12',
+              )}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-center text-xs text-faint">
+          Ask the room admin for the 6-character code.
+        </p>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={handleJoin} loading={loading} disabled={!complete}>
+          {loading ? 'Joining…' : 'Join room'}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 }

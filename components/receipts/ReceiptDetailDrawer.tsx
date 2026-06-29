@@ -1,94 +1,88 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink } from 'lucide-react';
+import { ExternalLink, ReceiptText, CalendarDays, UserRound } from 'lucide-react';
 import { Receipt } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Drawer, DrawerBody, DrawerFooter, DrawerHeader } from '@/components/ui/drawer';
+import { ReceiptStatusPill } from '@/components/ui/status-pill';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import ReimburseButton from './ReimburseButton';
 
 interface ReceiptDetailDrawerProps {
-  receipt: Receipt;
+  receipt: Receipt | null;
+  isAdmin: boolean;
+  onReimbursed: (id: string) => void;
   onClose: () => void;
 }
 
-export default function ReceiptDetailDrawer({ receipt, onClose }: ReceiptDetailDrawerProps) {
-  const fmt = (n: number | null) => (n != null ? `$${n.toFixed(2)}` : '—');
-  const fmtDate = (d: string | null) =>
-    d
-      ? new Date(d).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
-      : '—';
-
+export default function ReceiptDetailDrawer({
+  receipt,
+  isAdmin,
+  onReimbursed,
+  onClose,
+}: ReceiptDetailDrawerProps) {
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-          className="relative bg-popover border border-border w-full sm:max-w-lg max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-xl shadow-xl shadow-black/40"
-        >
-          {/* Drag handle — mobile only */}
-          <div className="sm:hidden flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 rounded-full bg-border" />
-          </div>
+    <Drawer open={Boolean(receipt)} onClose={onClose}>
+      {receipt && (
+        <>
+          <DrawerHeader onClose={onClose}>
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl border border-line bg-subtle text-accent">
+                <ReceiptText className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-semibold tracking-tight text-ink">
+                  {receipt.vendor || 'Unknown vendor'}
+                </h2>
+                <p className="mt-1 text-sm text-muted">
+                  {receipt.receipt_date ? formatDate(receipt.receipt_date, true) : 'No date'} · Submitted by{' '}
+                  {receipt.submitted_by_name}
+                </p>
+              </div>
+            </div>
+          </DrawerHeader>
 
-          {/* Header */}
-          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-popover border-b border-border">
-            <h2 className="text-sm font-semibold text-foreground">Receipt Detail</h2>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
-          </div>
-
-          <div className="p-5 flex flex-col gap-5">
-            {/* Header info */}
-            <div className="flex flex-col gap-1">
-              <p className="text-lg font-semibold text-foreground">
-                {receipt.vendor || 'Unknown vendor'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {fmtDate(receipt.receipt_date)} · Submitted by {receipt.submitted_by_name}
-              </p>
-              <span
-                className={`self-start mt-1.5 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border ${
-                  receipt.reimbursed
-                    ? 'bg-success/10 text-success border-success/20'
-                    : 'bg-warning/10 text-warning border-warning/20'
-                }`}
-              >
-                {receipt.reimbursed ? 'Reimbursed' : 'Pending reimbursement'}
-              </span>
+          <DrawerBody className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-line bg-elevated p-4">
+                <div className="flex items-center gap-2 text-xs font-medium text-faint">
+                  <CalendarDays className="size-3.5" />
+                  Receipt total
+                </div>
+                <p className="mt-2 text-xl font-semibold tracking-tight text-ink tabular">
+                  {formatCurrency(receipt.total)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-elevated p-4">
+                <div className="flex items-center gap-2 text-xs font-medium text-faint">
+                  <UserRound className="size-3.5" />
+                  Status
+                </div>
+                <div className="mt-2.5">
+                  <ReceiptStatusPill reimbursed={receipt.reimbursed} />
+                </div>
+              </div>
             </div>
 
             {/* Image */}
             {receipt.image_url && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Receipt Image</p>
+                <p className="mb-2 text-sm font-semibold text-ink">Receipt image</p>
                 <a
                   href={receipt.image_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block relative overflow-hidden rounded-xl group"
+                  className="group relative block overflow-hidden rounded-xl border border-line"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={receipt.image_url}
                     alt="Receipt"
-                    className="w-full object-cover rounded-xl max-h-64"
+                    className="max-h-64 w-full rounded-xl object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center rounded-xl">
-                    <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-ink/0 transition-colors group-hover:bg-ink/30">
+                    <ExternalLink className="size-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
                   </div>
                 </a>
               </div>
@@ -97,16 +91,19 @@ export default function ReceiptDetailDrawer({ receipt, onClose }: ReceiptDetailD
             {/* Line items */}
             {receipt.items && receipt.items.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Items</p>
-                <div className="flex flex-col gap-1">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-ink">Line items</h3>
+                  <span className="text-xs text-faint">{receipt.items.length} items</span>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-line">
                   {receipt.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted"
+                      className="flex items-center justify-between border-b border-line px-3.5 py-3 text-sm last:border-0"
                     >
-                      <span className="text-sm text-foreground">{item.name}</span>
+                      <span className="font-medium text-ink-soft">{item.name}</span>
                       {item.quantity && item.quantity !== '1' && (
-                        <span className="text-xs ml-3 shrink-0 px-2 py-0.5 rounded-md bg-accent text-accent-foreground font-medium">
+                        <span className="ml-3 shrink-0 rounded-md bg-subtle px-2 py-0.5 text-xs font-medium text-muted">
                           ×{item.quantity}
                         </span>
                       )}
@@ -116,24 +113,31 @@ export default function ReceiptDetailDrawer({ receipt, onClose }: ReceiptDetailD
               </div>
             )}
 
-            {/* Total */}
-            <div className="flex items-center justify-between px-4 py-3.5 rounded-xl border border-border bg-muted/50">
-              <span className="text-sm font-medium text-foreground">Total</span>
-              <span className="text-base font-bold text-primary tabular-nums">
-                {fmt(receipt.total)}
-              </span>
-            </div>
-
             {/* Notes */}
             {receipt.notes && (
-              <div className="px-3 py-2.5 rounded-lg bg-muted">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
-                <p className="text-sm text-foreground leading-relaxed">{receipt.notes}</p>
+              <div className="rounded-xl border border-line bg-surface p-4">
+                <p className="text-sm font-semibold text-ink">Notes</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{receipt.notes}</p>
               </div>
             )}
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+          </DrawerBody>
+
+          <DrawerFooter>
+            <Button variant="outline" onClick={onClose} className="flex-1">
+              Close
+            </Button>
+            {isAdmin && !receipt.reimbursed && (
+              <ReimburseButton
+                receiptId={receipt.id}
+                onReimbursed={(id) => {
+                  onReimbursed(id);
+                  onClose();
+                }}
+              />
+            )}
+          </DrawerFooter>
+        </>
+      )}
+    </Drawer>
   );
 }
