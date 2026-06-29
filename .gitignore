@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# Local Claude/Codex files (if you use them)
+.claude/
+.codex/
+
+# OS
+Thumbs.db
