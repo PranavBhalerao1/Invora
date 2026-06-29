@@ -2,6 +2,8 @@
 
 A modern inventory management platform built for organizations to manage rooms, supplies, and receipts with a clean, AI-inspired interface.
 
+Try it at: invora1.vercel.app
+
 ## Features
 
 - Room-based inventory management
