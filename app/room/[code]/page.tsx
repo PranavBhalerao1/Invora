@@ -41,6 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { Fab } from '@/components/ui/fab';
 import { KpiCard, KpiGrid } from '@/components/ui/kpi-card';
+import { RoomTab3DVisualClient } from '@/components/ui/RoomTab3DVisualClient';
 
 import { toast } from 'sonner';
 
@@ -294,7 +295,7 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
         </motion.div>
 
         {/* Tabs */}
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <Tabs
             items={tabs}
             value={tab}
@@ -302,9 +303,15 @@ export default function RoomDashboardPage({ params }: { params: Promise<{ code: 
             className="w-full overflow-x-auto sm:w-auto"
             layoutId={`room-tabs-${room.join_code}`}
           />
-          <div className="hidden items-center gap-2 text-[13px] text-faint sm:flex">
-            <span className="size-1.5 rounded-full bg-success" />
-            Synced just now
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {/* Tab-aware 3D visual — desktop only */}
+            <div className="pointer-events-none hidden h-[152px] w-[172px] md:block">
+              <RoomTab3DVisualClient tab={tab} className="h-full w-full" />
+            </div>
+            <div className="hidden items-center gap-2 text-[13px] text-faint sm:flex">
+              <span className="size-1.5 rounded-full bg-success" />
+              Synced just now
+            </div>
           </div>
         </div>
 
